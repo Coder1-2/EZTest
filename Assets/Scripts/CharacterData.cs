@@ -21,6 +21,7 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected float attackSpeed = 1f;
     [SerializeField] protected float baseMoveSpeed = 3f;
     [SerializeField] protected float detectRange = 30f;
+
     [SerializeField]
     protected AttackData[] attacks = {
         new AttackData { animationDuration = 0.5f, colliderActivationTime = 0.25f },
@@ -38,6 +39,7 @@ public class CharacterData : MonoBehaviour
     [Header("References")]
     [SerializeField] protected Animator animator;
     [SerializeField] protected Collider weaponCollider;
+    [SerializeField] protected Rigidbody rb;
 
     public TeamType Team => _team;
     public float CurrentHealth => _currentHealth;
@@ -55,7 +57,7 @@ public class CharacterData : MonoBehaviour
     protected bool _isAttacking;
     protected int _maxAttack = 3;
 
-    public Joystick joystick;
+    private Joystick _joystick;
 
     public virtual void Init(int level, TeamType teamType)
     {
@@ -85,25 +87,31 @@ public class CharacterData : MonoBehaviour
     }
     public virtual void UpdateCharacter()
     {
-        if (!_isAlive) return;
+        if (!_isAlive || _joystick == null) return;
 
-        Vector3 direction = new (joystick.Horizontal, 0, joystick.Vertical);
+        Vector3 direction = new(_joystick.Horizontal, 0, _joystick.Vertical);
 
         if (direction.magnitude > 0.1f)
         {
-            // Move
             direction.Normalize();
-            transform.forward = direction;
-            transform.Translate(direction * _currentMoveSpeed * Time.deltaTime, Space.World);
 
-            // Play run anim nếu có
+            rb.velocity = _currentMoveSpeed * direction;
+
+            var targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10 * Time.deltaTime);
+
+            // Animation
             animator.SetBool("IsRunning", true);
         }
         else
         {
-            // Dừng, tấn công nếu có target trong phạm vi
+            // Dừng lại
+            rb.velocity = Vector3.zero;
             animator.SetBool("IsRunning", false);
-            if (_target != null && Vector3.Distance(transform.position, _target.transform.position) <= attackRange)
+
+            // Attack nếu trong range
+            if (_target != null && (transform.position - _target.transform.position).sqrMagnitude <= attackRange * attackRange)
             {
                 Attack();
             }
@@ -163,6 +171,10 @@ public class CharacterData : MonoBehaviour
         {
             _currentAttack = -1;
         }
+    }
+    public void SetJoystick(Joystick joystick)
+    {
+        _joystick = joystick;
     }
 }
 

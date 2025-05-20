@@ -14,15 +14,20 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance;
 
     [Header("Game Settings")]
+    [SerializeField] private Joystick joystick;
     [SerializeField] private CharacterData playerPrefab; // Prefab cho player (CharacterData)
     [SerializeField] private CharacterData aiTeamAPrefab; // Prefab cho AI (AIData)
     [SerializeField] private CharacterData aiTeamBPrefab; // Prefab cho AI (AIData)
     [SerializeField] private GameMode currentMode = GameMode.OneVsOne;
     [SerializeField] private int currentLevel = 1;
 
-    [Header("Pool Settings")]
-    [SerializeField] private int initialAITeamAPoolSize = 24; 
-    [SerializeField] private int initialAITeamBPoolSize = 25; 
+    [Header("Spawn Areas")]
+    [SerializeField] private Transform spawnAreaTeamA;
+    [SerializeField] private Transform spawnAreaTeamB;
+    [SerializeField] private Vector3 spawnAreaSize = new Vector3(4, 0, 4);
+
+    private readonly int _initialAITeamAPoolSize = 24; 
+    private readonly int _initialAITeamBPoolSize = 25; 
 
     private List<CharacterData> _teamA = new ();
     private List<CharacterData> _teamB = new ();
@@ -79,7 +84,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Khởi tạo pool cho AI TeamA
-        for (int i = 0; i < initialAITeamAPoolSize; i++)
+        for (int i = 0; i < _initialAITeamAPoolSize; i++)
         {
             var obj = Instantiate(aiTeamAPrefab);
             obj.gameObject.SetActive(false);
@@ -87,7 +92,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Khởi tạo pool cho AI TeamB
-        for (int i = 0; i < initialAITeamBPoolSize; i++)
+        for (int i = 0; i < _initialAITeamBPoolSize; i++)
         {
             var obj = Instantiate(aiTeamBPrefab);
             obj.gameObject.SetActive(false);
@@ -170,59 +175,76 @@ public class GameManager : MonoBehaviour
         _teamA.Clear();
         _teamB.Clear();
     }
+    private List<Vector3> GetVFormationPositions(Vector3 center, int count, float spacing, Vector3 forward)
+    {
+        List<Vector3> positions = new();
 
+        forward = forward.normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+
+        for (int i = 0; i < count; i++)
+        {
+            int row = i / 2;
+            int side = (i % 2 == 0) ? -1 : 1; 
+
+            Vector3 offset = -row * spacing * forward + row * side * spacing * right;
+            positions.Add(center + offset);
+        }
+
+        return positions;
+    }
     private void SetupOneVsOne(int level)
     {
         // TeamA: 1 player
-        CharacterData player = SpawnPlayer(level, new Vector3(-5, 0, 0));
+        CharacterData player = SpawnPlayer(spawnAreaTeamA.position);
         _teamA.Add(player);
 
         // TeamB: 1 AI
-        CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, new Vector3(5, 0, 0));
+        CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
         _teamB.Add(ai);
     }
 
     private void SetupOneVsMany(int level)
     {
         // TeamA: 1 player
-        CharacterData player = SpawnPlayer(level, new Vector3(-5, 0, 0));
+        CharacterData player = SpawnPlayer(spawnAreaTeamA.position);
         _teamA.Add(player);
 
         // TeamB: 2-5 AI
         int aiCount = 2 + Mathf.FloorToInt((level - 1) / 3); // 2 AI ở level 1-3, 3 ở 4-6, 4 ở 7-9, 5 ở 10
+        var teamBPositions = GetVFormationPositions(spawnAreaTeamB.position, aiCount, 2f, Vector3.back);
         for (int i = 0; i < aiCount; i++)
         {
-            Vector3 position = new Vector3(5 + i * 2, 0, 0);
-            CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, position);
+            CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, teamBPositions[i]);
             _teamB.Add(ai);
         }
     }
 
     private void SetupManyVsMany(int level)
     {
-        // TeamA: 1 player + 1-3 AI
-        CharacterData player = SpawnPlayer(level, new Vector3(-5, 0, 0));
+        CharacterData player = SpawnPlayer(spawnAreaTeamA.position);
         _teamA.Add(player);
 
-        int aiCountTeamA = 1 + Mathf.FloorToInt((level - 1) / 4); // 1 AI ở level 1-4, 2 ở 5-8, 3 ở 9-10
+        int aiCountTeamA = 1 + Mathf.FloorToInt((level - 1) / 4);
+        var teamAPositions = GetVFormationPositions(spawnAreaTeamA.position, aiCountTeamA, 2f, Vector3.forward);
+
         for (int i = 0; i < aiCountTeamA; i++)
         {
-            Vector3 position = new Vector3(-5 + i * 2, 0, 2);
-            CharacterData ai = SpawnAI(aiTeamAPool, TeamType.TeamA, level, position);
+            CharacterData ai = SpawnAI(aiTeamAPool, TeamType.TeamA, level, teamAPositions[i]);
             _teamA.Add(ai);
         }
 
-        // TeamB: 2-4 AI
         int aiCountTeamB = aiCountTeamA + 1;
+        var teamBPositions = GetVFormationPositions(spawnAreaTeamB.position, aiCountTeamB, 2f, Vector3.back);
+
         for (int i = 0; i < aiCountTeamB; i++)
         {
-            Vector3 position = new Vector3(5 + i * 2, 0, 0);
-            CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, position);
+            CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, teamBPositions[i]);
             _teamB.Add(ai);
         }
     }
 
-    private CharacterData SpawnPlayer(int level, Vector3 position)
+    private CharacterData SpawnPlayer(Vector3 position)
     {
         if (_playerInstance == null)
         {
@@ -234,7 +256,8 @@ public class GameManager : MonoBehaviour
         _playerInstance.transform.position = position;
         _playerInstance.transform.rotation = Quaternion.identity;
 
-        _playerInstance.Init(level, TeamType.TeamA);
+        _playerInstance.Init(0, TeamType.TeamA);
+        _playerInstance.SetJoystick(joystick);
 
         return _playerInstance;
     }

@@ -5,10 +5,11 @@ using UnityEngine.EventSystems;
 
 public class FloatingJoystick : Joystick
 {
+    private Vector2 _defaultPos;
     protected override void Start()
     {
         base.Start();
-        background.gameObject.SetActive(false);
+        _defaultPos = background.anchoredPosition;
     }
 
     public override void OnPointerDown(PointerEventData eventData)
@@ -20,7 +21,7 @@ public class FloatingJoystick : Joystick
 
     public override void OnPointerUp(PointerEventData eventData)
     {
-        background.gameObject.SetActive(false);
+        background.anchoredPosition = _defaultPos;
         base.OnPointerUp(eventData);
     }
 }

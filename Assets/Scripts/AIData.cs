@@ -62,6 +62,8 @@ public class AIData : CharacterData
     }
     public override void UpdateCharacter()
     {
+        if (!_isAlive) return;
+
         FindTarget();
         switch (_aiLevel)
         {
@@ -85,11 +87,13 @@ public class AIData : CharacterData
         {
             if (Vector3.Distance(transform.position, _target.transform.position) <= attackRange)
             {
+                rb.velocity = Vector3.zero;
+
                 Attack();
             }
             else
             {
-                FollowTarget();
+                MoveToTarget();
             }
         }
     }
@@ -108,14 +112,15 @@ public class AIData : CharacterData
             }
             else
             {
-                float distance = Vector3.Distance(transform.position, _target.transform.position);
-                if (distance <= attackRange)
+                var distance = (transform.position - _target.transform.position).sqrMagnitude;
+                if (distance <= attackRange * attackRange)
                 {
+                    rb.velocity = Vector3.zero;
                     Attack();
                 }
                 else
                 {
-                    FollowTarget();
+                    MoveToTarget();
                 }
             }
         }
@@ -135,14 +140,15 @@ public class AIData : CharacterData
             }
             else
             {
-                float distance = Vector3.Distance(transform.position, _target.transform.position);
-                if (distance <= attackRange)
+                var distance = (transform.position - _target.transform.position).sqrMagnitude;
+                if (distance <= attackRange * attackRange)
                 {
+                    rb.velocity = Vector3.zero;
                     Attack();
                 }
                 else
                 {
-                    FollowTarget();
+                    MoveToTarget();
                 }
             }
         }
@@ -162,8 +168,8 @@ public class AIData : CharacterData
             var target = targetTeam[i];
             if (!target.IsAlive) continue;
 
-            float distance = Vector3.Distance(transform.position, target.transform.position);
-            if (distance < closestDistance && distance <= detectRange)
+            var distance = (transform.position - _target.transform.position).sqrMagnitude;
+            if (distance < closestDistance && distance <= detectRange * detectRange)
             {
                 if (_aiLevel == AILevel.Easy)
                 {
@@ -177,18 +183,28 @@ public class AIData : CharacterData
 
         _target = closestTarget;
     }
-    private void FollowTarget()
+    private void MoveToTarget()
     {
-        // Né tránh đè lên nhau
-        Vector3 avoidance = GetAvoidanceDirection();
-
-        // Di chuyển
+        // Tính hướng đến mục tiêu
         Vector3 direction = (_target.transform.position - transform.position).normalized;
+
+        // Thêm lực né tránh
+        Vector3 avoidance = GetAvoidanceDirection();
         direction += avoidance;
         direction = direction.normalized;
 
-        transform.position += _currentMoveSpeed * Time.deltaTime * direction;
-        transform.forward = direction;
+        // Xoay nhân vật về hướng di chuyển
+        if (direction.magnitude > 0.1f)
+        {
+            var targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10 * Time.deltaTime);
+        }
+
+        // Di chuyển
+        rb.velocity = _currentMoveSpeed * direction;
+
+        // Cập nhật animation
+        animator.SetBool("IsRunning", direction.magnitude > 0.1f);
     }
     private Vector3 GetAvoidanceDirection()
     {
@@ -199,14 +215,15 @@ public class AIData : CharacterData
             : GameManager.Instance.TeamB;
 
         var count = team.Count;
-        if(count <= 1) return avoidance;
         for (var i = 0; i < count; i++)
         {
             var other = team[i];
 
-            float distance = Vector3.Distance(transform.position, other.transform.position);
+            if (other == this) continue;
 
-            if (distance < _avoidanceRadius)
+            float distance = (transform.position - _target.transform.position).sqrMagnitude;
+
+            if (distance < _avoidanceRadius * _avoidanceRadius)
             {
                 Vector3 away = transform.position - other.transform.position;
                 avoidance += away.normalized / distance;
