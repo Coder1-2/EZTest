@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Cinemachine;
 using UnityEngine;
 
 public enum GameMode
@@ -20,6 +21,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private CharacterData aiTeamBPrefab; // Prefab cho AI (AIData)
     [SerializeField] private GameMode currentMode = GameMode.OneVsOne;
     [SerializeField] private int currentLevel = 1;
+    [SerializeField] private CinemachineVirtualCamera virtualCamera;
 
     [Header("Spawn Areas")]
     [SerializeField] private Transform spawnAreaTeamA;
@@ -258,6 +260,9 @@ public class GameManager : MonoBehaviour
 
         _playerInstance.Init(0, TeamType.TeamA);
         _playerInstance.SetJoystick(joystick);
+
+        virtualCamera.LookAt = _playerInstance.transform;
+        virtualCamera.Follow = _playerInstance.transform;
 
         return _playerInstance;
     }

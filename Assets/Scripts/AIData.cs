@@ -14,8 +14,8 @@ public class AIData : CharacterData
     public AILevel AILevel => _aiLevel;
 
     private AILevel _aiLevel;
-    private float _separationStrength = 3f;
-    private float _avoidanceRadius = 1.5f;
+    private float _separationStrength = 0.5f;
+    private float _avoidanceRadius = 0.2f;
     public override void Init(int level, TeamType teamType)
     {
         base.Init(level, teamType);
@@ -168,7 +168,7 @@ public class AIData : CharacterData
             var target = targetTeam[i];
             if (!target.IsAlive) continue;
 
-            var distance = (transform.position - _target.transform.position).sqrMagnitude;
+            var distance = (transform.position - target.transform.position).sqrMagnitude;
             if (distance < closestDistance && distance <= detectRange * detectRange)
             {
                 if (_aiLevel == AILevel.Easy)
@@ -193,15 +193,16 @@ public class AIData : CharacterData
         direction += avoidance;
         direction = direction.normalized;
 
-        // Xoay nhân vật về hướng di chuyển
-        if (direction.magnitude > 0.1f)
-        {
-            var targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10 * Time.deltaTime);
-        }
-
         // Di chuyển
         rb.velocity = _currentMoveSpeed * direction;
+
+        // Xoay nhân vật về hướng di chuyển
+        if (rb.velocity.magnitude > 0.1f)
+        {
+            var targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 8 * Time.deltaTime);
+        }
+
 
         // Cập nhật animation
         animator.SetBool("IsRunning", direction.magnitude > 0.1f);
