@@ -267,7 +267,6 @@ MonoBehaviour:
   attackRange: 1.5
   attackSpeed: 1
   baseMoveSpeed: 1.2
-  detectRange: 30
   attacks:
   - animationDuration: 1.98333
     colliderDatas:
@@ -282,7 +281,7 @@ MonoBehaviour:
   - animationDuration: 2.2
     colliderDatas:
     - collider: {fileID: 5819983770741460061}
-      activationDelay: 0.4
+      activationDelay: 0.5
   - animationDuration: 2.166667
     colliderDatas:
     - collider: {fileID: 6491384941097355796}
@@ -294,7 +293,6 @@ MonoBehaviour:
   animator: {fileID: 4674081637985950127}
   rb: {fileID: -5806874504680549280}
   collide: {fileID: 8476034952927423309}
-  NextAttackTime: 0
 --- !u!54 &-5806874504680549280
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1122,10 +1120,10 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.11
-  m_Height: 0.5
+  m_Radius: 0.1
+  m_Height: 0.6
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0, z: 0.03}
 --- !u!114 &8476034952927423309
 MonoBehaviour:
   m_ObjectHideFlags: 0

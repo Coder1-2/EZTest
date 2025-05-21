@@ -860,6 +860,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8325967814305085618}
+  - component: {fileID: 3157473532027148073}
+  - component: {fileID: 776066945531129126}
   m_Layer: 0
   m_Name: mixamorig:RightHand
   m_TagString: Untagged
@@ -884,6 +886,39 @@ Transform:
   - {fileID: 2235045882028921732}
   m_Father: {fileID: 5308958626012394194}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!135 &3157473532027148073
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5733585999609506427}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.07
+  m_Center: {x: 0, y: 0.09, z: 0}
+--- !u!114 &776066945531129126
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5733585999609506427}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c64d58fe4e91d846a86b52245117168, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5833210434453521875
 GameObject:
   m_ObjectHideFlags: 0
@@ -957,6 +992,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3459344509487551161}
+  - component: {fileID: 2442268041775365411}
+  - component: {fileID: 2411881330124638712}
   m_Layer: 0
   m_Name: mixamorig:LeftHand
   m_TagString: Untagged
@@ -981,6 +1018,39 @@ Transform:
   - {fileID: 3184145214501260076}
   m_Father: {fileID: 930322342376421763}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!135 &2442268041775365411
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6079624625286549174}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 64
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.07
+  m_Center: {x: 0, y: 0.09, z: 0}
+--- !u!114 &2411881330124638712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6079624625286549174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c64d58fe4e91d846a86b52245117168, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &6133861395800086695
 GameObject:
   m_ObjectHideFlags: 0
@@ -1340,28 +1410,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   baseHealth: 100
   baseDamage: 10
-  attackRange: 10
+  attackRange: 0.7
   attackSpeed: 1
   baseMoveSpeed: 0.8
-  detectRange: 30000
   attacks:
   - animationDuration: 1.98333
     colliderDatas:
-    - collider: {fileID: 0}
+    - collider: {fileID: 2442268041775365411}
       activationDelay: 0.3
   - animationDuration: 1.95
     colliderDatas:
-    - collider: {fileID: 0}
+    - collider: {fileID: 2442268041775365411}
       activationDelay: 0.2
-    - collider: {fileID: 0}
+    - collider: {fileID: 3157473532027148073}
       activationDelay: 0.35
   - animationDuration: 2.2
     colliderDatas:
-    - collider: {fileID: 0}
-      activationDelay: 0.4
+    - collider: {fileID: 2442268041775365411}
+      activationDelay: 0.5
   - animationDuration: 2.166667
     colliderDatas:
-    - collider: {fileID: 0}
+    - collider: {fileID: 3157473532027148073}
       activationDelay: 1
   healthScale: 0.2
   dameScale: 0.1
@@ -1370,7 +1439,6 @@ MonoBehaviour:
   animator: {fileID: 1943187249992631569}
   rb: {fileID: 1777937993759469660}
   collide: {fileID: 1854579205624930136}
-  NextAttackTime: 0
 --- !u!54 &1777937993759469660
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1396,7 +1464,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 84
+  m_Constraints: 116
   m_CollisionDetection: 0
 --- !u!136 &243906989575338914
 CapsuleCollider:
@@ -1417,7 +1485,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.15
+  m_Radius: 0.1
   m_Height: 1
   m_Direction: 1
   m_Center: {x: 0, y: 0.5, z: 0}

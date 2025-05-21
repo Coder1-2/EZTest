@@ -266,23 +266,33 @@ MonoBehaviour:
   baseDamage: 10
   attackRange: 0.5
   attackSpeed: 1
-  baseMoveSpeed: 0.8
-  detectRange: 30
+  baseMoveSpeed: 1
   attacks:
-  - animationDuration: 0.5
-    colliderActivationTime: 0.25
-  - animationDuration: 1
-    colliderActivationTime: 0.5
-  - animationDuration: 0.75
-    colliderActivationTime: 0.375
+  - animationDuration: 1.98333
+    colliderDatas:
+    - collider: {fileID: 0}
+      activationDelay: 0.3
+  - animationDuration: 1.95
+    colliderDatas:
+    - collider: {fileID: 0}
+      activationDelay: 0.2
+    - collider: {fileID: 0}
+      activationDelay: 0.35
+  - animationDuration: 2.2
+    colliderDatas:
+    - collider: {fileID: 0}
+      activationDelay: 0.4
+  - animationDuration: 2.166667
+    colliderDatas:
+    - collider: {fileID: 0}
+      activationDelay: 1
   healthScale: 0.2
   dameScale: 0.1
   moveSpeedScale: 0.1
   attackMultiplier: 0.2
   animator: {fileID: 4674081637985950127}
-  weaponCollider: {fileID: 0}
   rb: {fileID: 2903998081319985667}
-  NextAttackTime: 0
+  collide: {fileID: 0}
 --- !u!54 &2903998081319985667
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -308,7 +318,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 80
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!136 &4930216380006392145
 CapsuleCollider:

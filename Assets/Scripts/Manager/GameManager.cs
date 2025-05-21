@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Cinemachine;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public enum GameMode
@@ -163,9 +164,9 @@ public class GameManager : MonoBehaviour
             _teamB.Remove(character);
         } 
     }
-    public IEnumerator DelayReturnToPool(CharacterData character, TeamType team, float delay = 1)
+    public async UniTask DelayReturnToPool(CharacterData character, TeamType team, float delay = 1)
     {
-        yield return new WaitForSeconds(delay);
+        await UniTask.Delay((int)(delay * 1000));
         ReturnToPool(character, team);
     }
     private void ClearTeams()
@@ -220,8 +221,8 @@ public class GameManager : MonoBehaviour
         _teamA.Add(player);
 
         // TeamB: 1 AI
-        //CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
-        //_teamB.Add(ai);
+        CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
+        _teamB.Add(ai);
     }
 
     private void SetupOneVsMany(int level)

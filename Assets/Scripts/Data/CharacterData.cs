@@ -1,7 +1,8 @@
-﻿using System.Collections;
+﻿using Cysharp.Threading.Tasks;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
+using System.Threading;
 using UnityEngine;
 
 public enum TeamType
@@ -20,14 +21,16 @@ public struct ColliderData
 [System.Serializable]
 public struct AttackData
 {
-    public float animationDuration; // Tổng thời gian animation
-    public List<ColliderData> colliderDatas; // Danh sách Collider và thời gian kích hoạt
+    public float animationDuration;
+    public List<ColliderData> colliderDatas;
 }
+
 public static class AnimHash
 {
     public static readonly int IsMoving = Animator.StringToHash("IsMoving");
     public static readonly int Die = Animator.StringToHash("Die");
 }
+
 public class CharacterData : MonoBehaviour
 {
     [Header("Character Settings")]
@@ -36,7 +39,6 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected float attackRange = 1.5f;
     [SerializeField] protected float attackSpeed = 1f;
     [SerializeField] protected float baseMoveSpeed = 3f;
-    [SerializeField] protected float detectRange = 30f;
 
     [SerializeField]
     protected AttackData[] attacks;
@@ -54,12 +56,14 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected Rigidbody rb;
     [SerializeField] protected Collide collide;
 
+    public bool IsAttacking => _isAttacking;
     public TeamType Team => _team;
     public float CurrentHealth => _currentHealth;
     public bool IsAlive => _isAlive;
+    public CharacterData Target => _target;
     protected CharacterData _target;
 
-    private const float MoveInterruptWindow = 0.5f; // Thời gian cửa sổ di chuyển;
+    private const float MoveInterruptWindow = 0.5f;
 
     protected float _currentHealth;
     protected float _maxHealth;
@@ -70,12 +74,12 @@ public class CharacterData : MonoBehaviour
     protected int _level;
     protected bool _isAttacking;
     protected int _maxAttack = 3;
-    private bool _canResetCombo;
-    private float _moveTimeAccumulator = 0f; // Theo dõi thời gian di chuyển
+    protected bool _canResetCombo;
+    private float _moveTimeAccumulator = 0f;
 
     private Joystick _joystick;
-    private Coroutine _attackCoroutine;
-    private List<Coroutine> _colliderCoroutines = new();
+    protected CancellationTokenSource _attackCts;
+    protected List<UniTask> _colliderTasks = new();
 
     public virtual void Init(int level, TeamType teamType)
     {
@@ -103,7 +107,8 @@ public class CharacterData : MonoBehaviour
             _isAlive = false;
             animator.SetTrigger(AnimHash.Die);
             AudioManager.Instance.PlaySoundEffect(AudioName.Die);
-            StartCoroutine(GameManager.Instance.DelayReturnToPool(this, _team));
+            ResetAttack();
+            GameManager.Instance.DelayReturnToPool(this, _team).Forget();
         }
     }
 
@@ -113,6 +118,7 @@ public class CharacterData : MonoBehaviour
         float damage = baseDamage * (1 + _level * dameScale) * comboBonus;
         return damage;
     }
+
     public virtual void UpdateCharacter()
     {
         if (!_isAlive) return;
@@ -139,6 +145,7 @@ public class CharacterData : MonoBehaviour
             Attack();
         }
     }
+
     public virtual void Attack()
     {
         if (_isAttacking) return;
@@ -151,21 +158,20 @@ public class CharacterData : MonoBehaviour
 
         animator.speed = attackSpeed;
         string animTrigger = $"Attack{_currentAttack}";
-        //animator.SetTrigger(animTrigger);
         animator.CrossFadeInFixedTime(animTrigger, 0.3f);
 
         AttackData attackData = attacks[_currentAttack];
-        _attackCoroutine = StartCoroutine(PerformAttack(attackData));
+        _attackCts = new CancellationTokenSource();
+        PerformAttack(attackData, _attackCts.Token).Forget();
     }
-    protected virtual IEnumerator PerformAttack(AttackData attackData)
+
+    private async UniTask PerformAttack(AttackData attackData, CancellationToken cancellationToken)
     {
         float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
-
-        // Khởi tạo danh sách Collider
         List<ColliderData> colliders = attackData.colliderDatas;
         List<float> endTimes = new();
 
-        _colliderCoroutines.Clear();
+        _colliderTasks.Clear();
         foreach (var colData in colliders)
         {
             if (colData.collider == null)
@@ -173,98 +179,55 @@ public class CharacterData : MonoBehaviour
                 Debug.LogError($"[{gameObject.name}] ColliderData has null collider!");
                 continue;
             }
-            Coroutine colRoutine = StartCoroutine(ActivateColliderWithDelay(colData));
-            _colliderCoroutines.Add(colRoutine);
-
-            float totalTime = colData.activationDelay;
-            endTimes.Add(totalTime);
+            UniTask colTask = ActivateColliderWithDelay(colData, cancellationToken);
+            _colliderTasks.Add(colTask);
+            endTimes.Add(colData.activationDelay);
         }
 
-        // Chờ đến khi tất cả Collider đã enable
-        float colliderPhaseDuration = endTimes.Any() ? endTimes.Max() : 0f;
-        yield return new WaitForSeconds(colliderPhaseDuration);
+        float colliderPhaseDuration = endTimes.Max();
+        await UniTask.Delay((int)(colliderPhaseDuration * 1000), cancellationToken: cancellationToken);
 
-        // Mở cửa sổ combo để theo dõi di chuyển
         _canResetCombo = true;
         _moveTimeAccumulator = 0f;
-
-        // Theo dõi di chuyển trong vòng 0.5s
         float remainingTime = adjustedAnimDuration - colliderPhaseDuration;
         float timeElapsed = 0f;
         bool hasMoved = false;
 
         while (timeElapsed < remainingTime)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (_joystick.Direction.magnitude > 0.01f)
             {
                 hasMoved = true;
                 _moveTimeAccumulator += Time.deltaTime;
 
-                // Nếu di chuyển quá 0.5s, reset combo
                 if (_moveTimeAccumulator > MoveInterruptWindow)
                 {
                     ResetAttack();
-                    yield break;
+                    return;
                 }
             }
             else if (hasMoved && _moveTimeAccumulator < MoveInterruptWindow)
             {
-                // Nếu đã di chuyển nhưng dưới 0.5s và dừng lại, cho phép attack tiếp theo
                 _isAttacking = false;
                 _canResetCombo = false;
                 animator.speed = 1f;
-                yield break; // Thoát để có thể gọi Attack() ngay lập tức
+                return;
             }
 
+            await UniTask.Yield(cancellationToken);
             timeElapsed += Time.deltaTime;
-            yield return null;
         }
 
-        // Nếu không di chuyển hoặc không bị ngắt, reset trạng thái bình thường
-        if (_isAttacking)
-        {
-            _isAttacking = false;
-            _canResetCombo = false;
-            animator.speed = 1f;
-        }
-    }
-    private void ResetAttack()
-    {
-        // Stop attack coroutine
-        if (_attackCoroutine != null)
-        {
-            StopCoroutine(_attackCoroutine);
-            _attackCoroutine = null;
-        }
-
-        // Stop all collider coroutines
-        foreach (var c in _colliderCoroutines)
-        {
-            if (c != null)
-                StopCoroutine(c);
-        }
-        _colliderCoroutines.Clear();
-
-        // Reset trạng thái
         _isAttacking = false;
         _canResetCombo = false;
-        _currentAttack = -1;
-        _moveTimeAccumulator = 0f;
-        animator.speed = 1;
-
-        foreach (var atk in attacks)
-        {
-            foreach (var colData in atk.colliderDatas)
-            {
-                if (colData.collider != null)
-                    colData.collider.enabled = false;
-            }
-        }
+        animator.speed = 1f;
     }
 
-    protected IEnumerator ActivateColliderWithDelay(ColliderData colData)
+    private async UniTask ActivateColliderWithDelay(ColliderData colData, CancellationToken cancellationToken)
     {
-        yield return new WaitForSeconds(colData.activationDelay / attackSpeed);
+        await UniTask.Delay((int)(colData.activationDelay * 1000 / attackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
@@ -273,16 +236,43 @@ public class CharacterData : MonoBehaviour
             if (bullet == null)
             {
                 Debug.LogError("Cannot find bullet!");
-                yield break;
+                return;
             }
             bullet.Init(GetDamage());
         }
 
-        yield return new WaitForSeconds(0.1f); // Collider tắt sau 0.1s
+        await UniTask.Delay(100, cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
             colData.collider.enabled = false;
+        }
+    }
+
+    protected void ResetAttack()
+    {
+        if (_attackCts != null)
+        {
+            _attackCts.Cancel();
+            _attackCts.Dispose();
+            _attackCts = null;
+        }
+
+        _colliderTasks.Clear();
+
+        _isAttacking = false;
+        _canResetCombo = false;
+        _currentAttack = -1;
+        _moveTimeAccumulator = 0f;
+        animator.speed = 1f;
+
+        foreach (var atk in attacks)
+        {
+            foreach (var colData in atk.colliderDatas)
+            {
+                if (colData.collider != null)
+                    colData.collider.enabled = false;
+            }
         }
     }
 
