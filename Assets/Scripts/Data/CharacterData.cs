@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public enum TeamType
@@ -22,7 +23,11 @@ public struct AttackData
     public float animationDuration; // Tổng thời gian animation
     public List<ColliderData> colliderDatas; // Danh sách Collider và thời gian kích hoạt
 }
-
+public static class AnimHash
+{
+    public static readonly int IsMoving = Animator.StringToHash("IsMoving");
+    public static readonly int Die = Animator.StringToHash("Die");
+}
 public class CharacterData : MonoBehaviour
 {
     [Header("Character Settings")]
@@ -53,7 +58,8 @@ public class CharacterData : MonoBehaviour
     public float CurrentHealth => _currentHealth;
     public bool IsAlive => _isAlive;
     protected CharacterData _target;
-    [HideInInspector] public float NextAttackTime = 0f;
+
+    private const float MoveInterruptWindow = 0.5f; // Thời gian cửa sổ di chuyển;
 
     protected float _currentHealth;
     protected float _maxHealth;
@@ -64,12 +70,8 @@ public class CharacterData : MonoBehaviour
     protected int _level;
     protected bool _isAttacking;
     protected int _maxAttack = 3;
-    private const float ComboResetDelay = 0.5f;
-    private const float MoveInterruptWindow = 0.2f; // Thời gian cửa sổ di chuyển
-    private float _lastAttackTime = 0f;
     private bool _canResetCombo;
     private float _moveTimeAccumulator = 0f; // Theo dõi thời gian di chuyển
-    private bool _isMovingDuringComboWindow;
 
     private Joystick _joystick;
     private Coroutine _attackCoroutine;
@@ -86,21 +88,22 @@ public class CharacterData : MonoBehaviour
         _currentAttack = -1;
         _isAttacking = false;
         _canResetCombo = false;
-        _isMovingDuringComboWindow = false;
         _moveTimeAccumulator = 0f;
-        _maxAttack = 4;
+        _maxAttack = attacks.Length;
         collide.Init(this);
-        Debug.Log($"[{gameObject.name}] Initialized: Level={_level}, Team={_team}, Health={_currentHealth}, MoveSpeed={_currentMoveSpeed}");
     }
 
     public void TakeDamage(float damage)
     {
+        if (!_isAlive) return;
         _currentHealth -= damage;
-        Debug.Log($"[{gameObject.name}] Took {damage} damage. Health={_currentHealth}");
+        AudioManager.Instance.PlaySoundEffect(AudioName.Hit);
         if (_currentHealth <= 0)
         {
             _isAlive = false;
-            Debug.Log($"[{gameObject.name}] Defeated!");
+            animator.SetTrigger(AnimHash.Die);
+            AudioManager.Instance.PlaySoundEffect(AudioName.Die);
+            StartCoroutine(GameManager.Instance.DelayReturnToPool(this, _team));
         }
     }
 
@@ -108,108 +111,55 @@ public class CharacterData : MonoBehaviour
     {
         float comboBonus = 1 + (_currentAttack * attackMultiplier);
         float damage = baseDamage * (1 + _level * dameScale) * comboBonus;
-        Debug.Log($"[{gameObject.name}] GetDamage: Base={baseDamage}, LevelBonus={1 + _level * dameScale}, ComboBonus={comboBonus}, Total={damage}");
         return damage;
     }
-
     public virtual void UpdateCharacter()
     {
         if (!_isAlive) return;
 
-        if (!_isAttacking && _canResetCombo)
-        {
-            _lastAttackTime -= Time.deltaTime;
-            Debug.Log($"[{gameObject.name}] Combo reset timer: {_lastAttackTime:F3}s");
-            if (_lastAttackTime <= 0)
-            {
-                _canResetCombo = false;
-                ResetAttack();
-            }
-        }
-
         var movementVector = _joystick.Direction;
-        Debug.Log($"[{gameObject.name}] MovementVector: Magnitude={movementVector.magnitude:F3}");
-
         if (movementVector.magnitude > 0.01f)
         {
             Vector3 direction = new(movementVector.x, 0, movementVector.y);
             rb.velocity = _currentMoveSpeed * direction;
+
             var targetRotation = Quaternion.LookRotation(direction, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 8 * Time.deltaTime);
-            animator.SetBool("IsMoving", true);
+
             animator.speed = _currentMoveSpeed;
-
-            // Theo dõi di chuyển trong cửa sổ combo
-            if (_canResetCombo)
-            {
-                _isMovingDuringComboWindow = true;
-                _moveTimeAccumulator += Time.deltaTime;
-                Debug.Log($"[{gameObject.name}] Moving during combo window: MoveTime={_moveTimeAccumulator:F3}s");
-
-                // Nếu di chuyển quá 0.2s, reset combo
-                if (_moveTimeAccumulator > MoveInterruptWindow)
-                {
-                    Debug.Log($"[{gameObject.name}] Movement exceeded {MoveInterruptWindow:F3}s. Resetting combo!");
-                    ResetAttack();
-                    _isMovingDuringComboWindow = false;
-                    _moveTimeAccumulator = 0f;
-                }
-            }
+            animator.SetBool(AnimHash.IsMoving, true);
         }
         else
         {
             rb.velocity = Vector3.zero;
-            animator.SetBool("IsMoving", false);
+
             animator.speed = 1;
+            animator.SetBool(AnimHash.IsMoving, false);
 
-            // Nếu vừa di chuyển ngắn trong 0.2s và dừng, chuyển sang đòn tiếp theo
-            if (_canResetCombo && _isMovingDuringComboWindow && _moveTimeAccumulator > 0 && _moveTimeAccumulator <= MoveInterruptWindow)
-            {
-                Debug.Log($"[{gameObject.name}] Short movement stopped within {MoveInterruptWindow:F3}s (MoveTime={_moveTimeAccumulator:F3}s). Triggering next attack!");
-                ResetAttack();
-                Attack();
-            }
-            else
-            {
-                Attack();
-            }
-
-            _isMovingDuringComboWindow = false;
-            _moveTimeAccumulator = 0f;
+            Attack();
         }
     }
-
     public virtual void Attack()
     {
-        if (_isAttacking || Time.time < NextAttackTime)
-        {
-            Debug.Log($"[{gameObject.name}] Cannot attack: IsAttacking={_isAttacking}, NextAttackTime={NextAttackTime:F3}, CurrentTime={Time.time:F3}");
-            return;
-        }
+        if (_isAttacking) return;
+
+        _isAttacking = true;
+        _canResetCombo = false;
 
         if (_currentAttack >= _maxAttack - 1) _currentAttack = -1;
         _currentAttack = Mathf.Min(_currentAttack + 1, _maxAttack - 1);
-        _isAttacking = true;
-
-        int attackIndex = _currentAttack < attacks.Length ? _currentAttack : attacks.Length - 1;
-        AttackData attackData = attacks[attackIndex];
-        float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
 
         animator.speed = attackSpeed;
         string animTrigger = $"Attack{_currentAttack}";
-        animator.SetTrigger(animTrigger);
-        Debug.Log($"[{gameObject.name}] Attack triggered: Index={_currentAttack}, Trigger={animTrigger}, AnimDuration={adjustedAnimDuration:F3}s, AttackSpeed={attackSpeed}");
+        //animator.SetTrigger(animTrigger);
+        animator.CrossFadeInFixedTime(animTrigger, 0.3f);
 
+        AttackData attackData = attacks[_currentAttack];
         _attackCoroutine = StartCoroutine(PerformAttack(attackData));
-
-        NextAttackTime = Time.time + adjustedAnimDuration;
-        Debug.Log($"[{gameObject.name}] NextAttackTime set to {NextAttackTime:F3}");
     }
-
     protected virtual IEnumerator PerformAttack(AttackData attackData)
     {
         float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
-        Debug.Log($"[{gameObject.name}] PerformAttack started: AnimDuration={adjustedAnimDuration:F3}s");
 
         // Khởi tạo danh sách Collider
         List<ColliderData> colliders = attackData.colliderDatas;
@@ -220,46 +170,64 @@ public class CharacterData : MonoBehaviour
         {
             if (colData.collider == null)
             {
-                Debug.LogWarning($"[{gameObject.name}] ColliderData has null collider!");
+                Debug.LogError($"[{gameObject.name}] ColliderData has null collider!");
                 continue;
             }
             Coroutine colRoutine = StartCoroutine(ActivateColliderWithDelay(colData));
             _colliderCoroutines.Add(colRoutine);
 
-            float totalTime = (colData.activationDelay + 0.1f) / attackSpeed; // 0.1f là thời gian Collider bật
+            float totalTime = colData.activationDelay;
             endTimes.Add(totalTime);
         }
 
-        // Chờ đến khi tất cả Collider đã tắt
+        // Chờ đến khi tất cả Collider đã enable
         float colliderPhaseDuration = endTimes.Any() ? endTimes.Max() : 0f;
-        Debug.Log($"[{gameObject.name}] Waiting for Collider phase: {colliderPhaseDuration:F3}s");
         yield return new WaitForSeconds(colliderPhaseDuration);
 
         // Mở cửa sổ combo để theo dõi di chuyển
-        _lastAttackTime = ComboResetDelay;
         _canResetCombo = true;
-        _isMovingDuringComboWindow = false;
         _moveTimeAccumulator = 0f;
-        Debug.Log($"[{gameObject.name}] Combo window opened: MoveInterruptWindow={MoveInterruptWindow:F3}s, CanResetCombo={_canResetCombo}");
 
-        // Nếu không di chuyển, chờ hết animation
+        // Theo dõi di chuyển trong vòng 0.5s
         float remainingTime = adjustedAnimDuration - colliderPhaseDuration;
-        if (remainingTime > 0)
+        float timeElapsed = 0f;
+        bool hasMoved = false;
+
+        while (timeElapsed < remainingTime)
         {
-            Debug.Log($"[{gameObject.name}] Waiting for remaining animation: {remainingTime:F3}s");
-            yield return new WaitForSeconds(remainingTime);
+            if (_joystick.Direction.magnitude > 0.01f)
+            {
+                hasMoved = true;
+                _moveTimeAccumulator += Time.deltaTime;
+
+                // Nếu di chuyển quá 0.5s, reset combo
+                if (_moveTimeAccumulator > MoveInterruptWindow)
+                {
+                    ResetAttack();
+                    yield break;
+                }
+            }
+            else if (hasMoved && _moveTimeAccumulator < MoveInterruptWindow)
+            {
+                // Nếu đã di chuyển nhưng dưới 0.5s và dừng lại, cho phép attack tiếp theo
+                _isAttacking = false;
+                _canResetCombo = false;
+                animator.speed = 1f;
+                yield break; // Thoát để có thể gọi Attack() ngay lập tức
+            }
+
+            timeElapsed += Time.deltaTime;
+            yield return null;
         }
 
-        // Reset trạng thái nếu không bị ngắt bởi di chuyển
+        // Nếu không di chuyển hoặc không bị ngắt, reset trạng thái bình thường
         if (_isAttacking)
         {
             _isAttacking = false;
             _canResetCombo = false;
             animator.speed = 1f;
-            Debug.Log($"[{gameObject.name}] Attack completed: IsAttacking={_isAttacking}, CanResetCombo={_canResetCombo}");
         }
     }
-
     private void ResetAttack()
     {
         // Stop attack coroutine
@@ -267,7 +235,6 @@ public class CharacterData : MonoBehaviour
         {
             StopCoroutine(_attackCoroutine);
             _attackCoroutine = null;
-            Debug.Log($"[{gameObject.name}] Attack coroutine stopped");
         }
 
         // Stop all collider coroutines
@@ -277,13 +244,11 @@ public class CharacterData : MonoBehaviour
                 StopCoroutine(c);
         }
         _colliderCoroutines.Clear();
-        Debug.Log($"[{gameObject.name}] All collider coroutines stopped");
 
         // Reset trạng thái
         _isAttacking = false;
         _canResetCombo = false;
         _currentAttack = -1;
-        _isMovingDuringComboWindow = false;
         _moveTimeAccumulator = 0f;
         animator.speed = 1;
 
@@ -295,35 +260,34 @@ public class CharacterData : MonoBehaviour
                     colData.collider.enabled = false;
             }
         }
-        Debug.Log($"[{gameObject.name}] Attack reset: CurrentAttack={_currentAttack}, IsAttacking={_isAttacking}");
     }
 
     protected IEnumerator ActivateColliderWithDelay(ColliderData colData)
     {
-        Debug.Log($"[{gameObject.name}] Activating collider: Delay={colData.activationDelay / attackSpeed:F3}s");
         yield return new WaitForSeconds(colData.activationDelay / attackSpeed);
 
         if (colData.collider != null)
         {
             colData.collider.enabled = true;
             var bullet = colData.collider.GetComponent<Bullet>();
-            if (bullet != null)
-                bullet.Init(GetDamage());
-            Debug.Log($"[{gameObject.name}] Collider enabled: Damage={GetDamage()}");
+            if (bullet == null)
+            {
+                Debug.LogError("Cannot find bullet!");
+                yield break;
+            }
+            bullet.Init(GetDamage());
         }
 
-        yield return new WaitForSeconds(0.1f / attackSpeed); // Collider tắt sau 0.1s
+        yield return new WaitForSeconds(0.1f); // Collider tắt sau 0.1s
 
         if (colData.collider != null)
         {
             colData.collider.enabled = false;
-            Debug.Log($"[{gameObject.name}] Collider disabled");
         }
     }
 
     public void SetJoystick(Joystick joystick)
     {
         _joystick = joystick;
-        Debug.Log($"[{gameObject.name}] Joystick set");
     }
 }

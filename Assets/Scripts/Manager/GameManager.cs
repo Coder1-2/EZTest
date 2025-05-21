@@ -149,7 +149,25 @@ public class GameManager : MonoBehaviour
             _playerInstance.UpdateCharacter();
         }
     }
-
+    public void ReturnToPool(CharacterData character, TeamType team)
+    {
+        character.gameObject.SetActive(false);
+        if (team == TeamType.TeamA)
+        {
+            aiTeamAPool.Enqueue(character);
+            _teamA.Remove(character);
+        }
+        else 
+        {
+            aiTeamBPool.Enqueue(character);
+            _teamB.Remove(character);
+        } 
+    }
+    public IEnumerator DelayReturnToPool(CharacterData character, TeamType team, float delay = 1)
+    {
+        yield return new WaitForSeconds(delay);
+        ReturnToPool(character, team);
+    }
     private void ClearTeams()
     {
         // Trả TeamA về pool
@@ -202,8 +220,8 @@ public class GameManager : MonoBehaviour
         _teamA.Add(player);
 
         // TeamB: 1 AI
-        CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
-        _teamB.Add(ai);
+        //CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
+        //_teamB.Add(ai);
     }
 
     private void SetupOneVsMany(int level)
