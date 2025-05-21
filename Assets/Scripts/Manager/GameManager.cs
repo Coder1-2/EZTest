@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using Cinemachine;
 using Cysharp.Threading.Tasks;
@@ -41,6 +41,8 @@ public class GameManager : MonoBehaviour
     public List<CharacterData> TeamA => _teamA;
     public List<CharacterData> TeamB => _teamB;
     private bool _isGameRunning;
+
+    public Action<TeamType> OnGameOver;
 
     private void Awake()
     {
@@ -124,8 +126,6 @@ public class GameManager : MonoBehaviour
         }
 
         _isGameRunning = true;
-
-        Debug.Log($"Game setup: Mode={mode}, Level={level}, TeamA={_teamA.Count}, TeamB={_teamB.Count}");
     }
     private void Update()
     {
@@ -150,6 +150,29 @@ public class GameManager : MonoBehaviour
             _playerInstance.UpdateCharacter();
         }
     }
+    private void LateUpdate()
+    {
+        if (!_isGameRunning) return;
+
+        var teamACount = _teamA.Count;
+        for (var i = 0; i < teamACount; i++)
+        {
+            var aiTeamA = _teamA[i];
+            aiTeamA.UpdateHealthBarView();
+        }
+
+        var teamBCount = _teamB.Count;
+        for (var i = 0; i < teamBCount; i++)
+        {
+            var aiTeamB = _teamB[i];
+            aiTeamB.UpdateHealthBarView();
+        }
+
+        if (_playerInstance != null)
+        {
+            _playerInstance.UpdateHealthBarView();
+        }
+    }
     public void ReturnToPool(CharacterData character, TeamType team)
     {
         character.gameObject.SetActive(false);
@@ -166,7 +189,23 @@ public class GameManager : MonoBehaviour
     }
     public async UniTask DelayReturnToPool(CharacterData character, TeamType team, float delay = 1)
     {
-        await UniTask.Delay((int)(delay * 1000));
+        if (team == TeamType.TeamA)
+        {
+            if (_teamA.Count <= 1)
+            {
+                _isGameRunning = false;
+                OnGameOver?.Invoke(TeamType.TeamB);
+            }
+        }
+        else
+        {
+            if (_teamB.Count <= 1)
+            {
+                _isGameRunning = false;
+                OnGameOver?.Invoke(TeamType.TeamA);
+            }
+        }
+        await UniTask.Delay((int)(delay * 3000));
         ReturnToPool(character, team);
     }
     private void ClearTeams()
@@ -196,49 +235,82 @@ public class GameManager : MonoBehaviour
         _teamA.Clear();
         _teamB.Clear();
     }
-    private List<Vector3> GetVFormationPositions(Vector3 center, int count, float spacing, Vector3 forward)
+    private List<Vector3> GetRandomSpawnPositions(Vector3 center, int count, Vector3 areaSize)
     {
         List<Vector3> positions = new();
+        float minDistance = 0.5f; // Khoảng cách tối thiểu giữa các vị trí
 
-        forward = forward.normalized;
-        Vector3 right = Vector3.Cross(Vector3.up, forward);
+        if (areaSize.x <= 0 || areaSize.z <= 0)
+        {
+            Debug.LogWarning($"Invalid spawnAreaSize: {areaSize}. Using default size (4, 0, 4)");
+            areaSize = new Vector3(4, 0, 4);
+        }
 
         for (int i = 0; i < count; i++)
         {
-            int row = i / 2;
-            int side = (i % 2 == 0) ? -1 : 1; 
+            Vector3 position;
+            int attempts = 0;
+            const int maxAttempts = 30;
 
-            Vector3 offset = -row * spacing * forward + row * side * spacing * right;
-            positions.Add(center + offset);
+            do
+            {
+                float x = center.x + UnityEngine.Random.Range(-areaSize.x / 2, areaSize.x / 2);
+                float z = center.z + UnityEngine.Random.Range(-areaSize.z / 2, areaSize.z / 2);
+                position = new Vector3(x, center.y, z);
+
+                bool tooClose = false;
+                foreach (var pos in positions)
+                {
+                    if (Vector3.Distance(position, pos) < minDistance)
+                    {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose)
+                {
+                    positions.Add(position);
+                    Debug.Log($"Spawn position {i + 1}/{count}: {position}");
+                    break;
+                }
+
+                attempts++;
+                if (attempts >= maxAttempts)
+                {
+                    Debug.LogWarning($"Could not find non-overlapping position after {maxAttempts} attempts. Using last position: {position}");
+                    positions.Add(position);
+                    break;
+                }
+            } while (true);
         }
 
         return positions;
     }
+
     private void SetupOneVsOne(int level)
     {
-        // TeamA: 1 player
         CharacterData player = SpawnPlayer(spawnAreaTeamA.position);
         _teamA.Add(player);
 
-        // TeamB: 1 AI
         CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, spawnAreaTeamB.position);
         _teamB.Add(ai);
+        Debug.Log($"Setup OneVsOne: Player at {spawnAreaTeamA.position}, AI at {spawnAreaTeamB.position}");
     }
 
     private void SetupOneVsMany(int level)
     {
-        // TeamA: 1 player
         CharacterData player = SpawnPlayer(spawnAreaTeamA.position);
         _teamA.Add(player);
 
-        // TeamB: 2-5 AI
-        int aiCount = 2 + Mathf.FloorToInt((level - 1) / 3); // 2 AI ở level 1-3, 3 ở 4-6, 4 ở 7-9, 5 ở 10
-        var teamBPositions = GetVFormationPositions(spawnAreaTeamB.position, aiCount, 2f, Vector3.back);
+        int aiCount = 2 + Mathf.FloorToInt((level - 1) / 3);
+        var teamBPositions = GetRandomSpawnPositions(spawnAreaTeamB.position, aiCount, spawnAreaSize);
         for (int i = 0; i < aiCount; i++)
         {
             CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, teamBPositions[i]);
             _teamB.Add(ai);
         }
+        Debug.Log($"Setup OneVsMany: Player at {spawnAreaTeamA.position}, {aiCount} AIs in TeamB");
     }
 
     private void SetupManyVsMany(int level)
@@ -247,8 +319,7 @@ public class GameManager : MonoBehaviour
         _teamA.Add(player);
 
         int aiCountTeamA = 1 + Mathf.FloorToInt((level - 1) / 4);
-        var teamAPositions = GetVFormationPositions(spawnAreaTeamA.position, aiCountTeamA, 2f, Vector3.forward);
-
+        var teamAPositions = GetRandomSpawnPositions(spawnAreaTeamA.position, aiCountTeamA, spawnAreaSize);
         for (int i = 0; i < aiCountTeamA; i++)
         {
             CharacterData ai = SpawnAI(aiTeamAPool, TeamType.TeamA, level, teamAPositions[i]);
@@ -256,15 +327,14 @@ public class GameManager : MonoBehaviour
         }
 
         int aiCountTeamB = aiCountTeamA + 1;
-        var teamBPositions = GetVFormationPositions(spawnAreaTeamB.position, aiCountTeamB, 2f, Vector3.back);
-
+        var teamBPositions = GetRandomSpawnPositions(spawnAreaTeamB.position, aiCountTeamB, spawnAreaSize);
         for (int i = 0; i < aiCountTeamB; i++)
         {
             CharacterData ai = SpawnAI(aiTeamBPool, TeamType.TeamB, level, teamBPositions[i]);
             _teamB.Add(ai);
         }
+        Debug.Log($"Setup ManyVsMany: Player + {aiCountTeamA} AIs in TeamA, {aiCountTeamB} AIs in TeamB");
     }
-
     private CharacterData SpawnPlayer(Vector3 position)
     {
         if (_playerInstance == null)

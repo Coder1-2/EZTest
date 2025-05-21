@@ -30,8 +30,6 @@ public class AIData : CharacterData
 
     private AILevel DetermineAILevel()
     {
-        return AILevel.Hard; // Giữ logic hiện tại, có thể bật lại random sau
-        /*
         float[] weights = new float[3]; // [Easy, Medium, Hard]
 
         if (_level <= 2)
@@ -60,12 +58,11 @@ public class AIData : CharacterData
             }
         }
         return AILevel.Medium;
-        */
     }
 
     public override void UpdateCharacter()
     {
-        if (!_isAlive) return;
+        if (!_isAlive || _isStunned) return;
 
         FindTarget();
         switch (_aiLevel)
@@ -84,7 +81,7 @@ public class AIData : CharacterData
 
     public override void Attack()
     {
-        if (_isAttacking) return;
+        if (_isAttacking || _isStunned) return;
 
         _isAttacking = true;
         animator.SetBool(AnimHash.IsMoving, false);
@@ -140,12 +137,12 @@ public class AIData : CharacterData
                 Debug.LogError($"[{gameObject.name}] ColliderData has null collider!");
                 continue;
             }
-            UniTask colTask = ActivateColliderWithDelay(colData, cancellationToken);
+            UniTask colTask = ActivateColliderWithDelay(attackData, colData, cancellationToken);
             _colliderTasks.Add(colTask);
             endTimes.Add(colData.activationDelay);
         }
 
-        float colliderPhaseDuration = endTimes.Any() ? endTimes.Max() : 0f;
+        float colliderPhaseDuration = endTimes.Max();
         await UniTask.Delay((int)(colliderPhaseDuration * 1000), cancellationToken: cancellationToken);
 
         float remainingTime = adjustedAnimDuration - colliderPhaseDuration;
@@ -188,7 +185,7 @@ public class AIData : CharacterData
     }
 
 
-    private async UniTask ActivateColliderWithDelay(ColliderData colData, CancellationToken cancellationToken)
+    private async UniTask ActivateColliderWithDelay(AttackData attackData, ColliderData colData, CancellationToken cancellationToken)
     {
         await UniTask.Delay((int)(colData.activationDelay * 1000 / attackSpeed), cancellationToken: cancellationToken);
 
@@ -201,10 +198,10 @@ public class AIData : CharacterData
                 Debug.LogError("Cannot find bullet!");
                 return;
             }
-            bullet.Init(GetDamage());
+            bullet.Init(GetDamage(), attackData.hitType);
         }
 
-        await UniTask.Delay(100, cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(0.5f * 1000 / attackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
@@ -239,11 +236,9 @@ public class AIData : CharacterData
             var distance = (transform.position - _target.transform.position).sqrMagnitude;
             float distanceToTarget = Mathf.Sqrt(distance);
             int nearbyEnemies = CountNearbyEnemies();
-            float optimalDistance = attackRange * 0.9f;
+            float optimalDistance = attackRange * attackRange;
 
-            if (distanceToTarget >= optimalDistance * 0.7f &&
-                distanceToTarget <= optimalDistance &&
-                nearbyEnemies <= 2)
+            if (distanceToTarget <= optimalDistance && nearbyEnemies <= 2)
             {
                 rb.velocity = Vector3.zero;
                 Attack();
@@ -265,14 +260,11 @@ public class AIData : CharacterData
             var distance = (transform.position - _target.transform.position).sqrMagnitude;
             float distanceToTarget = Mathf.Sqrt(distance);
             bool allyAttacking = IsAllyAttackingTarget();
-            float optimalDistance = attackRange;
+            float optimalDistance = attackRange * attackRange;
 
             // Giới hạn số AI tấn công cùng mục tiêu
             int attackingAllies = CountAlliesAttackingTarget();
-            if (distanceToTarget >= optimalDistance * 0.7f &&
-                distanceToTarget <= optimalDistance &&
-                allyAttacking &&
-                attackingAllies < 5)
+            if (distanceToTarget <= optimalDistance && allyAttacking && attackingAllies < 5)
             {
                 rb.velocity = Vector3.zero;
                 Attack();
@@ -288,7 +280,10 @@ public class AIData : CharacterData
     {
         _targetUpdateTimer += Time.deltaTime;
         if (_targetUpdateTimer < _targetUpdateInterval && _target != null && _target.IsAlive)
+        {
+            Debug.Log($"[{gameObject.name}] Target still valid: {_target.gameObject.name}, skipping update");
             return;
+        }
 
         _targetUpdateTimer = 0f;
 
@@ -296,6 +291,7 @@ public class AIData : CharacterData
         CharacterData closestTarget = null;
         CharacterData weakestTarget = null;
         float lowestHealth = float.MaxValue;
+        CharacterData lowHealthTarget = null; // For Medium: Target with health < _currentHealth
 
         List<CharacterData> targetTeam = _team == TeamType.TeamA
             ? GameManager.Instance.TeamB
@@ -305,8 +301,9 @@ public class AIData : CharacterData
         {
             if (!target.IsAlive) continue;
 
-            var distance = (transform.position - target.transform.position).sqrMagnitude;
+            float distance = (transform.position - target.transform.position).sqrMagnitude;
 
+            // Easy: Chọn mục tiêu gần nhất
             if (_aiLevel == AILevel.Easy)
             {
                 if (distance < closestDistance)
@@ -315,18 +312,26 @@ public class AIData : CharacterData
                     closestTarget = target;
                 }
             }
-            else if (_aiLevel == AILevel.Medium && target.CurrentHealth < lowestHealth)
+            // Medium: Ưu tiên mục tiêu có máu thấp hơn _currentHealth, nếu không thì gần nhất
+            else if (_aiLevel == AILevel.Medium)
             {
-                lowestHealth = target.CurrentHealth;
-                weakestTarget = target;
+                if (target.CurrentHealth < _currentHealth)
+                {
+                    if (target.CurrentHealth < lowestHealth)
+                    {
+                        lowestHealth = target.CurrentHealth;
+                        lowHealthTarget = target;
+                    }
+                }
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestTarget = target;
+                }
             }
+            // Hard: Ưu tiên mục tiêu nhắm vào đồng đội (gần nhất), nếu không thì máu thấp nhất
             else if (_aiLevel == AILevel.Hard)
             {
-                if (target.CurrentHealth < lowestHealth)
-                {
-                    lowestHealth = target.CurrentHealth;
-                    weakestTarget = target;
-                }
                 if (target.Target != null && target.Target.Team == _team)
                 {
                     if (distance < closestDistance)
@@ -335,11 +340,26 @@ public class AIData : CharacterData
                         closestTarget = target;
                     }
                 }
+                if (target.CurrentHealth < lowestHealth)
+                {
+                    lowestHealth = target.CurrentHealth;
+                    weakestTarget = target;
+                }
             }
         }
 
-        _target = _aiLevel == AILevel.Hard && closestTarget != null ? closestTarget : weakestTarget;
-        if (_aiLevel == AILevel.Easy) _target = closestTarget;
+        if (_aiLevel == AILevel.Easy)
+        {
+            _target = closestTarget;
+        }
+        else if (_aiLevel == AILevel.Medium)
+        {
+            _target = lowHealthTarget != null ? lowHealthTarget : closestTarget;
+        }
+        else if (_aiLevel == AILevel.Hard)
+        {
+            _target = closestTarget != null ? closestTarget : weakestTarget;
+        }
     }
 
     private void MoveToTarget()
@@ -349,29 +369,7 @@ public class AIData : CharacterData
         Vector3 direction = Vector3.zero;
         float distanceToTarget = (transform.position - _target.transform.position).magnitude;
 
-        if (_aiLevel == AILevel.Easy)
-        {
-            direction = (_target.transform.position - transform.position).normalized;
-        }
-        else if (_aiLevel == AILevel.Medium)
-        {
-            float optimalDistance = attackRange * 0.9f;
-            if (distanceToTarget > optimalDistance)
-            {
-                direction = (_target.transform.position - transform.position).normalized;
-            }
-            else if (distanceToTarget < optimalDistance * 0.7f)
-            {
-                direction = (transform.position - _target.transform.position).normalized;
-            }
-        }
-        else if (_aiLevel == AILevel.Hard)
-        {
-            Vector3 toTarget = _target.transform.position - transform.position;
-            Vector3 flankDirection = Vector3.Cross(toTarget, Vector3.up).normalized;
-            flankDirection *= Random.Range(-1f, 1f) > 0 ? 1f : -1f;
-            direction = (toTarget.normalized + flankDirection * 0.5f).normalized;
-        }
+        direction = (_target.transform.position - transform.position).normalized;
 
         Vector3 avoidance = GetAvoidanceDirection();
         direction += avoidance;

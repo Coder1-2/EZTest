@@ -1,4 +1,5 @@
 ﻿using Cysharp.Threading.Tasks;
+using Microlight.MicroBar;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,14 @@ public enum TeamType
     TeamB
 }
 
+public enum HitType
+{
+    Hit0,
+    Hit1,
+    Hit2,
+    Hit3
+}
+
 [System.Serializable]
 public struct ColliderData
 {
@@ -21,6 +30,7 @@ public struct ColliderData
 [System.Serializable]
 public struct AttackData
 {
+    public HitType hitType;
     public float animationDuration;
     public List<ColliderData> colliderDatas;
 }
@@ -28,7 +38,11 @@ public struct AttackData
 public static class AnimHash
 {
     public static readonly int IsMoving = Animator.StringToHash("IsMoving");
+    public static readonly int Victory = Animator.StringToHash("Victory");
     public static readonly int Die = Animator.StringToHash("Die");
+    public static readonly int Hit0 = Animator.StringToHash("Hit0");
+    public static readonly int Hit1 = Animator.StringToHash("Hit1");
+    public static readonly int Hit2 = Animator.StringToHash("Hit2");
 }
 
 public class CharacterData : MonoBehaviour
@@ -55,6 +69,7 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected Animator animator;
     [SerializeField] protected Rigidbody rb;
     [SerializeField] protected Collide collide;
+    [SerializeField] protected MicroBar healthBar;
 
     public bool IsAttacking => _isAttacking;
     public TeamType Team => _team;
@@ -64,6 +79,7 @@ public class CharacterData : MonoBehaviour
     protected CharacterData _target;
 
     private const float MoveInterruptWindow = 0.5f;
+    private const float StunDuration = 0.5f; // Thời gian stun khi trúng xác suất
 
     protected float _currentHealth;
     protected float _maxHealth;
@@ -76,6 +92,8 @@ public class CharacterData : MonoBehaviour
     protected int _maxAttack = 3;
     protected bool _canResetCombo;
     private float _moveTimeAccumulator = 0f;
+    protected bool _isStunned;
+    private bool _isStop;
 
     private Joystick _joystick;
     protected CancellationTokenSource _attackCts;
@@ -93,23 +111,100 @@ public class CharacterData : MonoBehaviour
         _isAttacking = false;
         _canResetCombo = false;
         _moveTimeAccumulator = 0f;
+        _isStunned = false;
+        _isStop = false;
         _maxAttack = attacks.Length;
         collide.Init(this);
+        ResetAttack();
+        if(healthBar != null)
+        {
+            healthBar.gameObject.SetActive(true);
+            healthBar.Initialize(_maxHealth);
+        }
+        GameManager.Instance.OnGameOver += OnGameOver;
     }
-
-    public void TakeDamage(float damage)
+    private void OnGameOver(TeamType teamType)
+    {
+        if (_team != teamType) return;
+        animator.SetBool(AnimHash.IsMoving, false);
+        rb.velocity = Vector3.zero;
+        ResetAttack();
+        animator.SetTrigger(AnimHash.Victory);
+    }
+    public void KnockBack(Vector3 direction, float force = 1.5f)
+    {
+        rb.AddForce(direction * force, ForceMode.VelocityChange);
+    }
+    public void TakeDamage(float damage, HitType hitType)
     {
         if (!_isAlive) return;
+
         _currentHealth -= damage;
-        AudioManager.Instance.PlaySoundEffect(AudioName.Hit);
+
+        if (healthBar != null)
+        {
+            healthBar.UpdateBar(_currentHealth);
+        }
+
         if (_currentHealth <= 0)
         {
             _isAlive = false;
             animator.SetTrigger(AnimHash.Die);
             AudioManager.Instance.PlaySoundEffect(AudioName.Die);
             ResetAttack();
+            healthBar.gameObject.SetActive(false);
+            GameManager.Instance.OnGameOver -= OnGameOver;
             GameManager.Instance.DelayReturnToPool(this, _team).Forget();
         }
+        else
+        {
+            animator.SetBool(AnimHash.IsMoving, false);
+            AudioManager.Instance.PlaySoundEffect(AudioName.Hit);
+
+            // Trigger animation theo HitType
+            switch (hitType)
+            {
+                case HitType.Hit0:
+                case HitType.Hit3:
+                    animator.SetTrigger(AnimHash.Hit0);
+                    break;
+                case HitType.Hit1:
+                    animator.SetTrigger(AnimHash.Hit1);
+                    break;
+                case HitType.Hit2:
+                    animator.SetTrigger(AnimHash.Hit2);
+                    break;
+            }
+
+            // Kiểm tra xác suất stun
+            float stunChance = hitType switch
+            {
+                HitType.Hit0 => 0.05f,
+                HitType.Hit1 => 0.1f,
+                HitType.Hit2 => 0.2f,
+                HitType.Hit3 => 0.3f,
+                _ => 0f
+            };
+            bool isStunned = Random.Range(0f, 1f) < stunChance;
+            if (isStunned)
+            {
+                _isStunned = true;
+                ResetAttack();
+                rb.velocity = Vector3.zero; 
+                ApplyStun().Forget();
+            }
+        }
+    }
+    public void UpdateHealthBarView()
+    {
+        if (healthBar == null) return;
+        healthBar.transform.rotation = Quaternion.identity;
+    }
+
+    private async UniTask ApplyStun()
+    {
+        await UniTask.Delay((int)(StunDuration * 1000), cancellationToken: this.GetCancellationTokenOnDestroy());
+        _isStunned = false;
     }
 
     public float GetDamage()
@@ -121,11 +216,13 @@ public class CharacterData : MonoBehaviour
 
     public virtual void UpdateCharacter()
     {
-        if (!_isAlive) return;
+        if (!_isAlive || _isStunned) return;
 
         var movementVector = _joystick.Direction;
         if (movementVector.magnitude > 0.01f)
         {
+            _isStop = false;
+
             Vector3 direction = new(movementVector.x, 0, movementVector.y);
             rb.velocity = _currentMoveSpeed * direction;
 
@@ -134,10 +231,25 @@ public class CharacterData : MonoBehaviour
 
             animator.speed = _currentMoveSpeed;
             animator.SetBool(AnimHash.IsMoving, true);
+
+            if (_canResetCombo)
+            {
+                _moveTimeAccumulator += Time.deltaTime;
+
+                if (_moveTimeAccumulator > MoveInterruptWindow)
+                {
+                    ResetAttack();
+                }
+            }
         }
         else
         {
-            rb.velocity = Vector3.zero;
+            if (!_isStop)
+            {
+                rb.velocity = Vector3.zero;
+                _isStop = true;
+            }
+
 
             animator.speed = 1;
             animator.SetBool(AnimHash.IsMoving, false);
@@ -148,7 +260,10 @@ public class CharacterData : MonoBehaviour
 
     public virtual void Attack()
     {
-        if (_isAttacking) return;
+        if (_isAttacking || _isStunned)
+        {
+            return;
+        }
 
         _isAttacking = true;
         _canResetCombo = false;
@@ -168,6 +283,7 @@ public class CharacterData : MonoBehaviour
     private async UniTask PerformAttack(AttackData attackData, CancellationToken cancellationToken)
     {
         float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
+
         List<ColliderData> colliders = attackData.colliderDatas;
         List<float> endTimes = new();
 
@@ -176,10 +292,9 @@ public class CharacterData : MonoBehaviour
         {
             if (colData.collider == null)
             {
-                Debug.LogError($"[{gameObject.name}] ColliderData has null collider!");
                 continue;
             }
-            UniTask colTask = ActivateColliderWithDelay(colData, cancellationToken);
+            UniTask colTask = ActivateColliderWithDelay(attackData, colData, cancellationToken);
             _colliderTasks.Add(colTask);
             endTimes.Add(colData.activationDelay);
         }
@@ -189,6 +304,7 @@ public class CharacterData : MonoBehaviour
 
         _canResetCombo = true;
         _moveTimeAccumulator = 0f;
+
         float remainingTime = adjustedAnimDuration - colliderPhaseDuration;
         float timeElapsed = 0f;
         bool hasMoved = false;
@@ -225,7 +341,7 @@ public class CharacterData : MonoBehaviour
         animator.speed = 1f;
     }
 
-    private async UniTask ActivateColliderWithDelay(ColliderData colData, CancellationToken cancellationToken)
+    private async UniTask ActivateColliderWithDelay(AttackData attackData, ColliderData colData, CancellationToken cancellationToken)
     {
         await UniTask.Delay((int)(colData.activationDelay * 1000 / attackSpeed), cancellationToken: cancellationToken);
 
@@ -235,13 +351,12 @@ public class CharacterData : MonoBehaviour
             var bullet = colData.collider.GetComponent<Bullet>();
             if (bullet == null)
             {
-                Debug.LogError("Cannot find bullet!");
                 return;
             }
-            bullet.Init(GetDamage());
+            bullet.Init(GetDamage(), attackData.hitType);
         }
 
-        await UniTask.Delay(100, cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(0.5f * 1000 / attackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {

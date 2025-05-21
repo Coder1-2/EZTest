@@ -17,7 +17,12 @@ public class Collide : MonoBehaviour
         if (data == null || data == _characterData || data.Team == _characterData.Team) return;
         if (other.TryGetComponent<Bullet>(out var bullet))
         {
-            _characterData.TakeDamage(bullet.Dame);
+            other.enabled = false;
+
+            _characterData.TakeDamage(bullet.Dame, bullet.HitType);
+
+            Vector3 knockbackDir = (transform.position - other.transform.position).normalized;
+            _characterData.KnockBack(knockbackDir);
         }
     }
 }

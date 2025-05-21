@@ -382,13 +382,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 613710569}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.5, z: 2.74}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 0.23, y: 0.5, z: 1.96}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -740,7 +740,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: f98780c635128d742b9a4e4ffdcebd60, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1258,7 +1258,7 @@ Transform:
   m_GameObject: {fileID: 1911455540}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.5, z: -2.49}
+  m_LocalPosition: {x: 0, y: 0.5, z: -1.94}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1544,7 +1544,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3224536009412638956, guid: 1dba841203c087e43afdd8fbe5b67c4e, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3224536009412638957, guid: 1dba841203c087e43afdd8fbe5b67c4e, type: 3}
       propertyPath: m_RootOrder
@@ -1653,8 +1653,16 @@ PrefabInstance:
       objectReference: {fileID: 2015748255}
     - target: {fileID: 7108633774903115814, guid: d9ef3e09a93604d4b9ccb644b9f6fe79, type: 3}
       propertyPath: currentMode
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 7108633774903115814, guid: d9ef3e09a93604d4b9ccb644b9f6fe79, type: 3}
+      propertyPath: playerPrefab
+      value: 
+      objectReference: {fileID: 6398012578070064417, guid: a389451827f7c29409b3feb7eb971647, type: 3}
+    - target: {fileID: 7108633774903115814, guid: d9ef3e09a93604d4b9ccb644b9f6fe79, type: 3}
+      propertyPath: aiTeamAPrefab
+      value: 
+      objectReference: {fileID: 6707270340972914063, guid: 9389b836464a0b94c9c57632329896f4, type: 3}
     - target: {fileID: 7108633774903115814, guid: d9ef3e09a93604d4b9ccb644b9f6fe79, type: 3}
       propertyPath: virtualCamera
       value: 
