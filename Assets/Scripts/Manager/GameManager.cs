@@ -123,49 +123,27 @@ public class GameManager : MonoBehaviour
                 SetupManyVsMany(level);
                 break;
         }
-
-        UpdateCharactersAsync().Forget();
     }
-    private async UniTask UpdateCharactersAsync()
+    private void Update()
     {
-        while (_isGameRunning)
+        if (!_isGameRunning) return;
+
+        var teamACount = _teamA.Count;
+        for (var i = 0; i < teamACount; i++)
         {
-            for (int i = 0; i < _teamA.Count; i += 10)
-            {
-                for (int j = i; j < Mathf.Min(i + 10, _teamA.Count); j++)
-                {
-                    _teamA[j].UpdateCharacter();
-                }
-                await UniTask.NextFrame();
-            }
-            for (int i = 0; i < _teamB.Count; i += 10)
-            {
-                for (int j = i; j < Mathf.Min(i + 10, _teamB.Count); j++)
-                {
-                    _teamB[j].UpdateCharacter();
-                }
-                await UniTask.NextFrame();
-            }
+            var aiTeamA = _teamA[i];
+            aiTeamA.UpdateCharacter();
         }
+
+        var teamBCount = _teamB.Count;
+        for (var i = 0; i < teamBCount; i++)
+        {
+            var aiTeamB = _teamB[i];
+            aiTeamB.UpdateCharacter();
+        }
+
+        _playerInstance.UpdateCharacter();
     }
-    //private void Update()
-    //{
-    //    if (!_isGameRunning) return;
-
-    //    var teamACount = _teamA.Count;
-    //    for (var i = 0; i < teamACount; i++)
-    //    {
-    //        var aiTeamA = _teamA[i];
-    //        aiTeamA.UpdateCharacter();
-    //    }
-
-    //    var teamBCount = _teamB.Count;
-    //    for (var i = 0; i < teamBCount; i++)
-    //    {
-    //        var aiTeamB = _teamB[i];
-    //        aiTeamB.UpdateCharacter();
-    //    }
-    //}
 
     private void LateUpdate()
     {

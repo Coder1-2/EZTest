@@ -2557,7 +2557,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseHealth: 100
-  baseDamage: 20
+  baseDamage: 15
   attackRange: 0
   baseAttackSpeed: 1.2
   baseMoveSpeed: 1
@@ -2587,7 +2587,7 @@ MonoBehaviour:
   healthScale: 0.1
   dameScale: 0.1
   moveSpeedScale: 0.1
-  attackSpeedScale: 0.1
+  attackSpeedScale: 0.075
   attackMultiplier: 0.4
   animator: {fileID: 4161141258026543193}
   rb: {fileID: 3051781946895541193}
