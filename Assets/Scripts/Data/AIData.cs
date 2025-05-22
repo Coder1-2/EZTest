@@ -4,60 +4,23 @@ using System.Linq;
 using System.Threading;
 using UnityEngine;
 
-public enum AILevel
-{
-    Easy,
-    Medium,
-    Hard
-}
+public enum AILevel { Easy, Medium, Hard }
 
 public class AIData : CharacterData
 {
     public AILevel AILevel => _aiLevel;
 
     private AILevel _aiLevel;
-    private float _separationStrength = 0.5f;
-    private float _avoidanceRadius = 0.2f;
+    private float _separationStrength = 1f;
+    private float _avoidanceRadius = 1f;
     private float _targetUpdateTimer = 0f;
-    private const float _targetUpdateInterval = 0.5f; // Cập nhật mục tiêu mỗi 0.5s
+    private const float _targetUpdateInterval = 0.5f; 
 
-    public override void Init(int level, TeamType teamType)
+    public override void Init(int level, TeamType teamType, AILevel aILevel)
     {
-        base.Init(level, teamType);
-        _aiLevel = DetermineAILevel();
+        base.Init(level, teamType, aILevel);
+        _aiLevel = aILevel;
         _maxAttack = (int)_aiLevel + 1;
-    }
-
-    private AILevel DetermineAILevel()
-    {
-        float[] weights = new float[3]; // [Easy, Medium, Hard]
-
-        if (_level <= 2)
-        {
-            weights[0] = 0.7f; weights[1] = 0.3f; weights[2] = 0.0f;
-        }
-        else if (_level <= 5)
-        {
-            weights[0] = 0.2f; weights[1] = 0.6f; weights[2] = 0.2f;
-        }
-        else
-        {
-            weights[0] = 0.1f; weights[1] = 0.3f; weights[2] = 0.6f;
-        }
-
-        float totalWeight = weights.Sum();
-        float randomValue = Random.Range(0f, totalWeight);
-        float sum = 0f;
-
-        for (int i = 0; i < weights.Length; i++)
-        {
-            sum += weights[i];
-            if (randomValue <= sum)
-            {
-                return (AILevel)i;
-            }
-        }
-        return AILevel.Medium;
     }
 
     public override void UpdateCharacter()
@@ -234,11 +197,10 @@ public class AIData : CharacterData
             if (_isAttacking) return;
 
             var distance = (transform.position - _target.transform.position).sqrMagnitude;
-            float distanceToTarget = Mathf.Sqrt(distance);
             int nearbyEnemies = CountNearbyEnemies();
             float optimalDistance = attackRange * attackRange;
 
-            if (distanceToTarget <= optimalDistance && nearbyEnemies <= 2)
+            if (distance <= optimalDistance && nearbyEnemies <= 2)
             {
                 rb.velocity = Vector3.zero;
                 Attack();
@@ -258,13 +220,11 @@ public class AIData : CharacterData
             if (_isAttacking) return;
 
             var distance = (transform.position - _target.transform.position).sqrMagnitude;
-            float distanceToTarget = Mathf.Sqrt(distance);
-            bool allyAttacking = IsAllyAttackingTarget();
             float optimalDistance = attackRange * attackRange;
 
             // Giới hạn số AI tấn công cùng mục tiêu
             int attackingAllies = CountAlliesAttackingTarget();
-            if (distanceToTarget <= optimalDistance && allyAttacking && attackingAllies < 5)
+            if (distance <= optimalDistance && attackingAllies < 5)
             {
                 rb.velocity = Vector3.zero;
                 Attack();
@@ -366,10 +326,7 @@ public class AIData : CharacterData
     {
         if (_target == null) return;
 
-        Vector3 direction = Vector3.zero;
-        float distanceToTarget = (transform.position - _target.transform.position).magnitude;
-
-        direction = (_target.transform.position - transform.position).normalized;
+        var direction = (_target.transform.position - transform.position).normalized;
 
         Vector3 avoidance = GetAvoidanceDirection();
         direction += avoidance;
@@ -419,24 +376,6 @@ public class AIData : CharacterData
             }
         }
         return count;
-    }
-
-    private bool IsAllyAttackingTarget()
-    {
-        List<CharacterData> team = _team == TeamType.TeamA
-            ? GameManager.Instance.TeamA
-            : GameManager.Instance.TeamB;
-
-        if (team.Count == 1) return true;
-        foreach (var ally in team)
-        {
-            if (ally == this || !ally.IsAlive) continue;
-            if (ally.Target == _target)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     private int CountAlliesAttackingTarget()

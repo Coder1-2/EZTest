@@ -79,7 +79,7 @@ public class CharacterData : MonoBehaviour
     protected CharacterData _target;
 
     private const float MoveInterruptWindow = 0.5f;
-    private const float StunDuration = 0.5f; // Thời gian stun khi trúng xác suất
+    private const float StunDuration = 0.5f;
 
     protected float _currentHealth;
     protected float _maxHealth;
@@ -99,7 +99,7 @@ public class CharacterData : MonoBehaviour
     protected CancellationTokenSource _attackCts;
     protected List<UniTask> _colliderTasks = new();
 
-    public virtual void Init(int level, TeamType teamType)
+    public virtual void Init(int level, TeamType teamType, AILevel aILevel)
     {
         _level = level;
         _team = teamType;
@@ -114,22 +114,32 @@ public class CharacterData : MonoBehaviour
         _isStunned = false;
         _isStop = false;
         _maxAttack = attacks.Length;
+
         collide.Init(this);
         ResetAttack();
+
         if(healthBar != null)
         {
             healthBar.gameObject.SetActive(true);
             healthBar.Initialize(_maxHealth);
         }
+
         GameManager.Instance.OnGameOver += OnGameOver;
     }
     private void OnGameOver(TeamType teamType)
     {
-        if (_team != teamType) return;
+        healthBar.gameObject.SetActive(false);
         animator.SetBool(AnimHash.IsMoving, false);
         rb.velocity = Vector3.zero;
         ResetAttack();
-        animator.SetTrigger(AnimHash.Victory);
+        if (_team == teamType)
+        {
+            animator.SetTrigger(AnimHash.Victory);
+        }
+        else
+        {
+            animator.SetTrigger(AnimHash.Die);
+        }
     }
     public void KnockBack(Vector3 direction, float force = 1.5f)
     {
@@ -146,11 +156,12 @@ public class CharacterData : MonoBehaviour
             healthBar.UpdateBar(_currentHealth);
         }
 
+        GameManager.Instance.CreateText(transform.position + new Vector3(0, 1, 0), Mathf.RoundToInt(damage).ToString());
+
         if (_currentHealth <= 0)
         {
             _isAlive = false;
             animator.SetTrigger(AnimHash.Die);
-            AudioManager.Instance.PlaySoundEffect(AudioName.Die);
             ResetAttack();
             healthBar.gameObject.SetActive(false);
             GameManager.Instance.OnGameOver -= OnGameOver;
@@ -159,7 +170,6 @@ public class CharacterData : MonoBehaviour
         else
         {
             animator.SetBool(AnimHash.IsMoving, false);
-            AudioManager.Instance.PlaySoundEffect(AudioName.Hit);
 
             // Trigger animation theo HitType
             switch (hitType)
@@ -167,12 +177,15 @@ public class CharacterData : MonoBehaviour
                 case HitType.Hit0:
                 case HitType.Hit3:
                     animator.SetTrigger(AnimHash.Hit0);
+                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit1);
                     break;
                 case HitType.Hit1:
                     animator.SetTrigger(AnimHash.Hit1);
+                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit3);
                     break;
                 case HitType.Hit2:
                     animator.SetTrigger(AnimHash.Hit2);
+                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit2);
                     break;
             }
 

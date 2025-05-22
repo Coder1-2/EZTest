@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4380265c206cb7b439a5b35f31f898b7, type: 3}
+  m_Name: GameSettings
+  m_EditorClassIdentifier: 
+  player: {fileID: 6398012578070064417, guid: a389451827f7c29409b3feb7eb971647, type: 3}
+  AITeamA: {fileID: 6707270340972914063, guid: 6e70ac2dd964f7e4798ba322509c7e7a, type: 3}
+  AITeamB: {fileID: 1923429137704108737, guid: 775cd3b427d63974d8703d8fc87cc3ce, type: 3}
+  effectHit: {fileID: 9127653965126434405, guid: 3c6022ac1a1cc7b438777188ae54da0e, type: 3}
+  textData: {fileID: 11400000, guid: a5445a47a1f772043ba96c0acbf4ce17, type: 2}
+  levelConfig: {fileID: 11400000, guid: 7850ac95f5cefc5468ad027b75f651fe, type: 2}

@@ -19,6 +19,9 @@ public class Collide : MonoBehaviour
         {
             other.enabled = false;
 
+            Vector3 collisionPoint = (transform.position + other.transform.position) / 2f;
+            GameManager.Instance.CreateEffectHit(collisionPoint);
+
             _characterData.TakeDamage(bullet.Dame, bullet.HitType);
 
             Vector3 knockbackDir = (transform.position - other.transform.position).normalized;

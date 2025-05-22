@@ -5,9 +5,11 @@ using UnityEngine;
 public enum AudioName
 {
     GameBG,
-    Attack,
-    Hit,
-    Die,
+
+    Hit1,
+    Hit2,
+    Hit3,
+
     Win,
     Lose
 }

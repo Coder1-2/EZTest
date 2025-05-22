@@ -1,0 +1,244 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86138143ae07f204cbb2bfad566a6816, type: 3}
+  m_Name: LevelDataConfig
+  m_EditorClassIdentifier: 
+  oneVsOneLevels:
+  - timeLimit: 120
+    aiLevel: 0
+  - timeLimit: 100
+    aiLevel: 0
+  - timeLimit: 90
+    aiLevel: 1
+  - timeLimit: 80
+    aiLevel: 1
+  - timeLimit: 70
+    aiLevel: 2
+  - timeLimit: 60
+    aiLevel: 2
+  - timeLimit: 50
+    aiLevel: 2
+  - timeLimit: 45
+    aiLevel: 2
+  - timeLimit: 40
+    aiLevel: 2
+  - timeLimit: 35
+    aiLevel: 2
+  oneVsManyLevels:
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 2
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 3
+      easyRate: 0.75
+      mediumRate: 0.5
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 4
+      easyRate: 0.5
+      mediumRate: 0.5
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 5
+      easyRate: 0.5
+      mediumRate: 0.5
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 6
+      easyRate: 0.25
+      mediumRate: 0.5
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 6
+      easyRate: 0
+      mediumRate: 1
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 6
+      easyRate: 0
+      mediumRate: 1
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 7
+      easyRate: 0
+      mediumRate: 0.75
+      hardRate: 0.25
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 7
+      easyRate: 0
+      mediumRate: 0.5
+      hardRate: 0.5
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 8
+      easyRate: 0
+      mediumRate: 0.25
+      hardRate: 0.75
+  - timeLimit: 120
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 8
+      easyRate: 0
+      mediumRate: 0
+      hardRate: 1
+  manyVsManyLevels:
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 1
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 3
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 1
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 4
+      easyRate: 0.75
+      mediumRate: 0.25
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 1
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 4
+      easyRate: 0.5
+      mediumRate: 0.5
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 2
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 6
+      easyRate: 0.25
+      mediumRate: 0.75
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 2
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 8
+      easyRate: 0
+      mediumRate: 1
+      hardRate: 0
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 2
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 10
+      easyRate: 0
+      mediumRate: 0.75
+      hardRate: 0.25
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 3
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 12
+      easyRate: 0
+      mediumRate: 0.5
+      hardRate: 0.5
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 3
+      easyRate: 1
+      mediumRate: 0
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 14
+      easyRate: 0
+      mediumRate: 0.5
+      hardRate: 0.75
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 4
+      easyRate: 0.5
+      mediumRate: 0.5
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 16
+      easyRate: 0
+      mediumRate: 0.5
+      hardRate: 0.75
+  - timeLimit: 120
+    aiTeamA:
+      aiTeam: 0
+      aiQuantity: 24
+      easyRate: 0
+      mediumRate: 1
+      hardRate: 0
+    aiTeamB:
+      aiTeam: 1
+      aiQuantity: 25
+      easyRate: 0
+      mediumRate: 0
+      hardRate: 1
