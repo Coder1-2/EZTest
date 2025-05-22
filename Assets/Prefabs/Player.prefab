@@ -2557,10 +2557,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   baseHealth: 100
-  baseDamage: 10
+  baseDamage: 20
   attackRange: 0
-  attackSpeed: 1
-  baseMoveSpeed: 1.2
+  baseAttackSpeed: 1.2
+  baseMoveSpeed: 1
   attacks:
   - hitType: 0
     animationDuration: 1.98333
@@ -2584,10 +2584,11 @@ MonoBehaviour:
     colliderDatas:
     - collider: {fileID: 6560748576724706904}
       activationDelay: 1
-  healthScale: 0.2
+  healthScale: 0.1
   dameScale: 0.1
   moveSpeedScale: 0.1
-  attackMultiplier: 0.2
+  attackSpeedScale: 0.1
+  attackMultiplier: 0.4
   animator: {fileID: 4161141258026543193}
   rb: {fileID: 3051781946895541193}
   collide: {fileID: 7061111926522263911}

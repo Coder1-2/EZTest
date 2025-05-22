@@ -17,7 +17,7 @@ MonoBehaviour:
   - {r: 1, g: 1, b: 1, a: 1}
   - {r: 1, g: 0, b: 0, a: 1}
   sizes: []
-  font: {fileID: 11400000, guid: 771487ef4a9a6d841940ac945d21ee16, type: 2}
+  font: {fileID: 0}
   bold: 0
   italic: 0
   underline: 0
@@ -34,5 +34,5 @@ MonoBehaviour:
   popModifier: 1.5
   colourAlternationMode: 0
   sizeAlternationMode: 0
-  enterType: 02000000
+  enterType: 0200000004000000
   exitType: 1

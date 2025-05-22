@@ -51,7 +51,7 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected float baseHealth = 100f;
     [SerializeField] protected float baseDamage = 10f;
     [SerializeField] protected float attackRange = 1.5f;
-    [SerializeField] protected float attackSpeed = 1f;
+    [SerializeField] protected float baseAttackSpeed = 1f;
     [SerializeField] protected float baseMoveSpeed = 3f;
 
     [SerializeField]
@@ -61,6 +61,7 @@ public class CharacterData : MonoBehaviour
     [SerializeField] protected float healthScale = 0.2f;
     [SerializeField] protected float dameScale = 0.1f;
     [SerializeField] protected float moveSpeedScale = 0.1f;
+    [SerializeField] protected float attackSpeedScale = 0.1f;
 
     [Header("Attack chain Settings")]
     [SerializeField] protected float attackMultiplier = 0.2f;
@@ -91,6 +92,7 @@ public class CharacterData : MonoBehaviour
     protected bool _isAttacking;
     protected int _maxAttack = 3;
     protected bool _canResetCombo;
+    protected float _currenAttackSpeed;
     private float _moveTimeAccumulator = 0f;
     protected bool _isStunned;
     private bool _isStop;
@@ -107,6 +109,7 @@ public class CharacterData : MonoBehaviour
         _maxHealth = baseHealth * (_level * healthScale + 1);
         _currentHealth = _maxHealth;
         _currentMoveSpeed = baseMoveSpeed * (_level * moveSpeedScale + 1);
+        _currenAttackSpeed = baseAttackSpeed * (_level * attackSpeedScale + 1);
         _currentAttack = -1;
         _isAttacking = false;
         _canResetCombo = false;
@@ -158,6 +161,9 @@ public class CharacterData : MonoBehaviour
 
         GameManager.Instance.CreateText(transform.position + new Vector3(0, 1, 0), Mathf.RoundToInt(damage).ToString());
 
+        AudioName[] sounds = { AudioName.Hit1, AudioName.Hit2, AudioName.Hit3 };
+        AudioManager.Instance.PlaySoundEffect(sounds[Random.Range(0, sounds.Length)]);
+
         if (_currentHealth <= 0)
         {
             _isAlive = false;
@@ -171,21 +177,17 @@ public class CharacterData : MonoBehaviour
         {
             animator.SetBool(AnimHash.IsMoving, false);
 
-            // Trigger animation theo HitType
             switch (hitType)
             {
                 case HitType.Hit0:
                 case HitType.Hit3:
                     animator.SetTrigger(AnimHash.Hit0);
-                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit1);
                     break;
                 case HitType.Hit1:
                     animator.SetTrigger(AnimHash.Hit1);
-                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit3);
                     break;
                 case HitType.Hit2:
                     animator.SetTrigger(AnimHash.Hit2);
-                    AudioManager.Instance.PlaySoundEffect(AudioName.Hit2);
                     break;
             }
 
@@ -263,10 +265,6 @@ public class CharacterData : MonoBehaviour
                 _isStop = true;
             }
 
-
-            animator.speed = 1;
-            animator.SetBool(AnimHash.IsMoving, false);
-
             Attack();
         }
     }
@@ -278,13 +276,15 @@ public class CharacterData : MonoBehaviour
             return;
         }
 
+        animator.SetBool(AnimHash.IsMoving, false);
+
         _isAttacking = true;
         _canResetCombo = false;
 
         if (_currentAttack >= _maxAttack - 1) _currentAttack = -1;
         _currentAttack = Mathf.Min(_currentAttack + 1, _maxAttack - 1);
 
-        animator.speed = attackSpeed;
+        animator.speed = _currenAttackSpeed;
         string animTrigger = $"Attack{_currentAttack}";
         animator.CrossFadeInFixedTime(animTrigger, 0.3f);
 
@@ -295,7 +295,7 @@ public class CharacterData : MonoBehaviour
 
     private async UniTask PerformAttack(AttackData attackData, CancellationToken cancellationToken)
     {
-        float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
+        float adjustedAnimDuration = attackData.animationDuration / _currenAttackSpeed;
 
         List<ColliderData> colliders = attackData.colliderDatas;
         List<float> endTimes = new();
@@ -356,7 +356,7 @@ public class CharacterData : MonoBehaviour
 
     private async UniTask ActivateColliderWithDelay(AttackData attackData, ColliderData colData, CancellationToken cancellationToken)
     {
-        await UniTask.Delay((int)(colData.activationDelay * 1000 / attackSpeed), cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(colData.activationDelay * 1000 / _currenAttackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
@@ -369,7 +369,7 @@ public class CharacterData : MonoBehaviour
             bullet.Init(GetDamage(), attackData.hitType);
         }
 
-        await UniTask.Delay((int)(0.5f * 1000 / attackSpeed), cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(0.5f * 1000 / _currenAttackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {

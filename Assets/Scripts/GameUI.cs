@@ -11,6 +11,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject panelResult;
     [SerializeField] private TMP_Text timeTxt;
     [SerializeField] private TMP_Text resultTxt;
+    [SerializeField] private TMP_Text levelTxt;
     [SerializeField] private TMP_Dropdown gameModeDropdown;
     [SerializeField] private TMP_Dropdown levelDropdown;
 
@@ -49,18 +50,30 @@ public class UIManager : MonoBehaviour
     }
     public async UniTask ShowPanelResult(TeamType teamType)
     {
-        await UniTask.Delay(3000);
+        AudioManager.Instance.StopMusic();
+
+        await UniTask.Delay(2000);
         string result = "Victory";
-        if(teamType == TeamType.TeamA)
+        if(teamType == TeamType.TeamB)
         {
-            result = "Defeat";
+            result = "Defeated!";
         }
         resultTxt.text = result;
         panelResult.SetActive(true);
-        
+
+        if (teamType == TeamType.TeamA)
+        {
+            AudioManager.Instance.PlaySoundEffect(AudioName.Win);
+        }
+        else
+        {
+            AudioManager.Instance.PlaySoundEffect(AudioName.Lose);
+        }
     }
     public void OnContinueButtonClick()
     {
+        AudioManager.Instance.PlayMusic(AudioName.HomeBG);
+
         panelResult.SetActive(false);
         panelStart.SetActive(true);
     }
@@ -70,6 +83,7 @@ public class UIManager : MonoBehaviour
         GameMode mode = (GameMode)gameModeDropdown.value;
         int level = levelDropdown.value;
 
+        levelTxt.text = $"Level {level + 1}";
         GameManager.Instance.SetupGame(mode, level);
 
         panelStart.SetActive(false); 

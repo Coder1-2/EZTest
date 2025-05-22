@@ -79,7 +79,7 @@ public class AIData : CharacterData
         if (_currentAttack >= _maxAttack - 1) _currentAttack = -1;
         _currentAttack = Mathf.Min(_currentAttack + 1, _maxAttack - 1);
 
-        animator.speed = attackSpeed;
+        animator.speed = _currenAttackSpeed;
         string animTrigger = $"Attack{_currentAttack}";
         animator.CrossFadeInFixedTime(animTrigger, 0.3f);
 
@@ -88,7 +88,7 @@ public class AIData : CharacterData
     }
     private async UniTask PerformAttack(AttackData attackData, CancellationToken cancellationToken)
     {
-        float adjustedAnimDuration = attackData.animationDuration / attackSpeed;
+        float adjustedAnimDuration = attackData.animationDuration / _currenAttackSpeed;
         List<ColliderData> colliders = attackData.colliderDatas;
         List<float> endTimes = new();
 
@@ -150,7 +150,7 @@ public class AIData : CharacterData
 
     private async UniTask ActivateColliderWithDelay(AttackData attackData, ColliderData colData, CancellationToken cancellationToken)
     {
-        await UniTask.Delay((int)(colData.activationDelay * 1000 / attackSpeed), cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(colData.activationDelay * 1000 / baseAttackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
@@ -164,7 +164,7 @@ public class AIData : CharacterData
             bullet.Init(GetDamage(), attackData.hitType);
         }
 
-        await UniTask.Delay((int)(0.5f * 1000 / attackSpeed), cancellationToken: cancellationToken);
+        await UniTask.Delay((int)(0.5f * 1000 / _currenAttackSpeed), cancellationToken: cancellationToken);
 
         if (colData.collider != null)
         {
@@ -239,9 +239,8 @@ public class AIData : CharacterData
     private void FindTarget()
     {
         _targetUpdateTimer += Time.deltaTime;
-        if (_targetUpdateTimer < _targetUpdateInterval && _target != null && _target.IsAlive)
+        if (_targetUpdateTimer < _targetUpdateInterval)
         {
-            Debug.Log($"[{gameObject.name}] Target still valid: {_target.gameObject.name}, skipping update");
             return;
         }
 

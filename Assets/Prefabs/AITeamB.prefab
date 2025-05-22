@@ -1896,10 +1896,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7646013ef853b764291a8e07280e4556, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseHealth: 100
+  baseHealth: 200
   baseDamage: 10
   attackRange: 0.7
-  attackSpeed: 1
+  baseAttackSpeed: 1.2
   baseMoveSpeed: 0.8
   attacks:
   - hitType: 0
@@ -1927,6 +1927,7 @@ MonoBehaviour:
   healthScale: 0.2
   dameScale: 0.1
   moveSpeedScale: 0.1
+  attackSpeedScale: 0.05
   attackMultiplier: 0.2
   animator: {fileID: 1943187249992631569}
   rb: {fileID: 1777937993759469660}

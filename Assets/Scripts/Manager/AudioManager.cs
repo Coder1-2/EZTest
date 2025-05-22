@@ -11,7 +11,9 @@ public enum AudioName
     Hit3,
 
     Win,
-    Lose
+    Lose,
+
+    HomeBG
 }
 
 public class AudioManager : MonoBehaviour

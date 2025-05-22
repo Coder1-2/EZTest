@@ -234,8 +234,8 @@ MonoBehaviour:
       aiTeam: 0
       aiQuantity: 24
       easyRate: 0
-      mediumRate: 1
-      hardRate: 0
+      mediumRate: 0.75
+      hardRate: 0.25
     aiTeamB:
       aiTeam: 1
       aiQuantity: 25

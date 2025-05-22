@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        AudioManager.Instance.PlayMusic(AudioName.HomeBG);
         InitializePlayer();
         InitializeAIPools();
     }
@@ -102,6 +103,8 @@ public class GameManager : MonoBehaviour
 
     public void SetupGame(GameMode mode, int level)
     {
+        AudioManager.Instance.PlayMusic(AudioName.GameBG);
+
         _gameMode = mode;
 
         _isGameRunning = true;
@@ -121,31 +124,48 @@ public class GameManager : MonoBehaviour
                 break;
         }
 
+        UpdateCharactersAsync().Forget();
     }
-
-    private void Update()
+    private async UniTask UpdateCharactersAsync()
     {
-        if (!_isGameRunning) return;
-
-        var teamACount = _teamA.Count;
-        for (var i = 0; i < teamACount; i++)
+        while (_isGameRunning)
         {
-            var aiTeamA = _teamA[i];
-            aiTeamA.UpdateCharacter();
-        }
-
-        var teamBCount = _teamB.Count;
-        for (var i = 0; i < teamBCount; i++)
-        {
-            var aiTeamB = _teamB[i];
-            aiTeamB.UpdateCharacter();
-        }
-
-        if (_playerInstance != null)
-        {
-            _playerInstance.UpdateCharacter();
+            for (int i = 0; i < _teamA.Count; i += 10)
+            {
+                for (int j = i; j < Mathf.Min(i + 10, _teamA.Count); j++)
+                {
+                    _teamA[j].UpdateCharacter();
+                }
+                await UniTask.NextFrame();
+            }
+            for (int i = 0; i < _teamB.Count; i += 10)
+            {
+                for (int j = i; j < Mathf.Min(i + 10, _teamB.Count); j++)
+                {
+                    _teamB[j].UpdateCharacter();
+                }
+                await UniTask.NextFrame();
+            }
         }
     }
+    //private void Update()
+    //{
+    //    if (!_isGameRunning) return;
+
+    //    var teamACount = _teamA.Count;
+    //    for (var i = 0; i < teamACount; i++)
+    //    {
+    //        var aiTeamA = _teamA[i];
+    //        aiTeamA.UpdateCharacter();
+    //    }
+
+    //    var teamBCount = _teamB.Count;
+    //    for (var i = 0; i < teamBCount; i++)
+    //    {
+    //        var aiTeamB = _teamB[i];
+    //        aiTeamB.UpdateCharacter();
+    //    }
+    //}
 
     private void LateUpdate()
     {
@@ -163,11 +183,6 @@ public class GameManager : MonoBehaviour
         {
             var aiTeamB = _teamB[i];
             aiTeamB.UpdateHealthBarView();
-        }
-
-        if (_playerInstance != null)
-        {
-            _playerInstance.UpdateHealthBarView();
         }
     }
 
@@ -238,7 +253,6 @@ public class GameManager : MonoBehaviour
 
         if (areaSize.x <= 0 || areaSize.z <= 0)
         {
-            Debug.LogWarning($"Invalid spawnAreaSize: {areaSize}. Using default size (4, 0, 4)");
             areaSize = new Vector3(4, 0, 4);
         }
 
@@ -267,14 +281,12 @@ public class GameManager : MonoBehaviour
                 if (!tooClose)
                 {
                     positions.Add(position);
-                    Debug.Log($"Spawn position {i + 1}/{count}: {position}");
                     break;
                 }
 
                 attempts++;
                 if (attempts >= maxAttempts)
                 {
-                    Debug.LogWarning($"Could not find non-overlapping position after {maxAttempts} attempts. Using last position: {position}");
                     positions.Add(position);
                     break;
                 }
@@ -429,14 +441,6 @@ public class GameManager : MonoBehaviour
         _isGameRunning = false;
         OnGameOver?.Invoke(teamType);
         uiManager.ShowPanelResult(teamType).Forget();
-        if(teamType == TeamType.TeamA)
-        {
-            AudioManager.Instance.PlaySoundEffect(AudioName.Win);
-        }
-        else
-        {
-            AudioManager.Instance.PlaySoundEffect(AudioName.Lose);
-        }
     }
     private async void StartTimeLimit(int time)
     {

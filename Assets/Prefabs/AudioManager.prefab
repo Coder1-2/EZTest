@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d00e77a64c7a50041a155487af20124e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  musicSource: {fileID: 0}
+  musicSource: {fileID: 8703950681168050067}
   soundEffects:
   - name: 1
     clip: {fileID: 8300000, guid: d5e8be8c82e593f44906f9851c0fff34, type: 3}
@@ -78,6 +78,11 @@ MonoBehaviour:
     loop: 1
     volume: 0.5
     pitch: 1
+  - name: 6
+    clip: {fileID: 8300000, guid: 92a0da82e83765e42af82bacf9a6c241, type: 3}
+    loop: 1
+    volume: 0.5
+    pitch: 1
   audioPrefab: {fileID: 7594767770653727036, guid: 7195d47fc2a8a0d4d9b3efebcb9e1779, type: 3}
 --- !u!82 &8703950681168050067
 AudioSource:
@@ -89,11 +94,11 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 4aa5190bcd25db541a138bfd9e99d001, type: 3}
-  m_PlayOnAwake: 1
+  m_audioClip: {fileID: 0}
+  m_PlayOnAwake: 0
   m_Volume: 0.5
   m_Pitch: 1
-  Loop: 0
+  Loop: 1
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
